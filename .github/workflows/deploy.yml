@@ -1,0 +1,40 @@
+name: Build and deploy
+
+on:
+  schedule:
+    # The puzzle rolls at 04:00 UTC; give it ten minutes. GitHub may run this
+    # late under load, which is fine - /api/reveal serves the live puzzle all day.
+    - cron: '10 4 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Only what deploying to Pages needs. No write access to the repo itself.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # No dependencies to install - fetch.py and build.py are stdlib only.
+      - name: Build today's page
+        run: python fetch.py --out _site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

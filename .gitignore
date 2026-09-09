@@ -1,0 +1,16 @@
+# Generated on every run - the workflow rebuilds them, and index.html is 440 KB
+# a day of inline base64, so committing it daily would bloat history fast.
+index.html
+data.json
+_site/
+
+# Raw HTTP response cache, including base64 image bodies. Local only: it absorbs
+# whatever gets fetched, so it is never something to publish.
+cache.json
+*.tmp
+
+# One-day dump of the full 4,772-answer key. Not needed to build the page.
+reference/
+
+__pycache__/
+*.pyc
