@@ -162,6 +162,17 @@ def main():
     import build
     out_path = build.resolve_out()   # --out PATH / $KRILLION_OUT / next to the script
     date = get('https://krillion.io/api/today', fresh=True)['date']
+
+    os.makedirs(build.DATA_DIR, exist_ok=True)
+    day_path = os.path.join(build.DATA_DIR, date + '.json')
+    # The workflow runs on every push as well as on the schedule, and a day's
+    # answers never change once captured, so re-fetching is pure waste. --force
+    # re-pulls if a capture was interrupted and left a partial file.
+    if os.path.exists(day_path) and '--force' not in sys.argv[1:]:
+        print(date, 'already captured - rebuilding only (--force to re-pull)')
+        build.main(out_path)
+        return
+
     reveal = get(f'https://krillion.io/api/reveal?date={date}')
     out = {'date': date, 'prompts': []}
     for p in reveal['prompts']:
@@ -193,8 +204,15 @@ def main():
             'tiers': tiers,
             'items': items,
         })
-    json.dump(out, open(os.path.join(DIR, 'data.json'), 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
-    print('\nwrote data.json for', date)
+
+    # Written the same way as the pages: a half-written capture cannot be
+    # re-pulled the next day, because the endpoint has moved on by then.
+    tmp = day_path + '.tmp'
+    json.dump(out, open(tmp, 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
+    os.replace(tmp, day_path)
+    print()
+    print('wrote', day_path)
+
     save_cache(force=True)
     prune_cache()
     build.main(out_path)

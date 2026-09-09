@@ -4,14 +4,17 @@ on:
   schedule:
     # The puzzle rolls at 04:00 UTC; give it ten minutes. GitHub may run this
     # late under load, which is fine - /api/reveal serves the live puzzle all day.
+    # It has to run every day though: a missed day cannot be recovered, because
+    # the endpoint refuses every date except the current one.
     - cron: '10 4 * * *'
   workflow_dispatch:
   push:
     branches: [main]
 
-# Only what deploying to Pages needs. No write access to the repo itself.
+# contents: write is needed to commit each day's capture back to data/. That is
+# the only durable record of a day - it cannot be re-fetched later.
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -30,9 +33,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       # No dependencies to install - fetch.py and build.py are stdlib only.
-      - name: Build today's page
-        run: python fetch.py --out _site/index.html
+      # fetch.py skips the pull if today is already captured, so the push and
+      # schedule triggers do not re-fetch the same day.
+      - name: Capture today and build the site
+        run: python fetch.py --out _site
+
+      - name: Commit today's capture
+        run: |
+          if [ -z "$(git status --porcelain data)" ]; then
+            echo "No new capture to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git commit -m "Capture $(ls data | tail -1 | sed 's/\.json$//')"
+          git push
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

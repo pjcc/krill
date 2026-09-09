@@ -2,28 +2,28 @@ KRILLION DAILY
 
 Generates a single self-contained page showing the hundred-point ("krillion" tier) answers to today's seven Krillion prompts, each with a Wikipedia summary, image and link.
 
-Published page: https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9-0ae3c0aa653c
+Published at https://piers.qa/krill/ - rebuilt and redeployed daily by GitHub Actions from the pjcc/krill repo. There is also an artifact copy at https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9-0ae3c0aa653c.
 
 
 RUN IT
 
 python C:\dev\krillion-daily\fetch.py
 
-That fetches the data and rebuilds index.html in one go. Do it after 04:00 UTC, which is when the puzzle rolls over. Then republish the artifact to refresh the hosted copy, or just open index.html locally.
+That captures today into data/<date>.json and rebuilds the whole site into _site/ in one go. Do it after 04:00 UTC, which is when the puzzle rolls over. The hosted site refreshes itself daily; open _site/index.html to check it locally.
 
-To write the page somewhere else - a web root, for a scheduled run - pass --out, or set KRILLION_OUT:
+--out is the output DIRECTORY (default _site beside the script), or set KRILLION_OUT:
 
-python C:\dev\krillion-dailyetch.py --out D:\www\krillo\index.html
+python C:\dev\krillion-daily\fetch.py --out D:\www\krill
 
-Missing directories are created, and the file is written to a .tmp and renamed, so a web server never serves it half-written.
+Missing directories are created, and each page is written to a .tmp and renamed, so a web server never serves one half-written. With --fragment, --out is a single FILE holding only the latest day and no navigation - that is how the artifact copy is built.
 
 
 FILES
 
 fetch.py - pulls the date from krillion.io/api/today, the answers from /api/reveal, resolves each answer to a Wikipedia article, embeds the thumbnail as a data URI, writes data.json, then calls build.py
 build.py - renders data.json into index.html; owns all the styling
-index.html - the generated page, self-contained at roughly 441 KB (images are inline data URIs)
-data.json - the enriched answer set for the current date
+_site/ - the generated site: index.html is the latest day, <date>/index.html is each archived day. Self-contained at roughly 441 KB per page (images are inline data URIs)
+data/<date>.json - one enriched capture per day. TRACKED IN GIT, not derived: see below
 cache.json - every HTTP response, keyed by URL, with a last-used timestamp; delete to force a fully fresh pull
 reference/krillion_answers_2026-09-09.txt - full dump of all 4,772 accepted answers for 9 Sep 2026, grouped by tier
 reference/reveal_2026-09-09.json - the raw /api/reveal response for the same date
@@ -32,6 +32,10 @@ reference/reveal_2026-09-09.json - the raw /api/reveal response for the same dat
 HOW THE DATA IS OBTAINED
 
 GET https://krillion.io/api/reveal?date=YYYY-MM-DD returns the complete scored answer key: every accepted answer with its tier, score and quip. No authentication. It serves the live puzzle only - past and future dates return "That answer sheet is not publicly available", so the sheet has to be pulled on the day.
+
+That is why data/<date>.json is committed rather than regenerated. A day not captured on the day is gone permanently, and the archive cannot be backfilled: it starts on 2026-09-09 and grows forward. If the scheduled run fails, that day is simply missing from the archive for good.
+
+Each page carries a previous / today / next navigation across whatever days have been captured. Because the enriched data is what is kept, rather than the finished HTML, a design change re-renders the entire archive on the next run.
 
 Tiers are krillion 100, deepcut 85, rare 60, schooler 30, plankton 10. Deepcut is the catch-all bulk tier, so almost any non-obvious answer scores 85; the list worth knowing is the handful of plankton answers to avoid.
 

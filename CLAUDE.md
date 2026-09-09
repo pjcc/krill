@@ -37,15 +37,35 @@ The page is published at https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9
 
 To update it, pass that URL as `url` when publishing. Publishing without it creates a second, separate artifact.
 
+## Archive and navigation
+
+`data/<date>.json` is one enriched capture per day, and it is **tracked, not derived**. `/api/reveal` serves only the live puzzle - every other date, past or future, returns "That answer sheet is not publicly available" - so a day that is not captured on the day is gone permanently. The archive starts 2026-09-09 and cannot be backfilled.
+
+`build.py` renders every captured day: `/<date>/index.html` for each, plus `/index.html` as a copy of the latest. Each page carries a previous / today / next nav, top and bottom. The root copy uses different link prefixes to the dated pages, since it sits one level up - `nav_html(..., root=True)`.
+
+Because the data is kept rather than the HTML, a design change re-renders the whole archive on the next run.
+
+`fetch.py` skips the pull when `data/<date>.json` already exists, so the push and schedule triggers do not re-fetch the same day. `--force` re-pulls if a capture was interrupted.
+
 ## Output path
 
-`build.py` resolves where `index.html` goes, in this order: `--out PATH` (or `--out=PATH`), then `$KRILLION_OUT`, then `index.html` beside the script. `fetch.py` passes its own argv straight through, so both accept the flag:
+`--out PATH` (or `--out=PATH`, or `$KRILLION_OUT`) is the **site directory**, default `_site` beside the script:
 
 ```
-python fetch.py --out /var/www/piers.qa/krillo/index.html
+python fetch.py --out /var/www/piers.qa/krill
 ```
 
-Missing parent directories are created, and the page is written to a `.tmp` then renamed, so a web server never serves a half-written file.
+With `--fragment` it is a single **file** instead, holding only the latest day with no nav - for a host that supplies its own document shell and cannot follow links to sibling pages. That is how the artifact copy is built.
+
+Pages are written to a `.tmp` and renamed, so a web server never serves one half-written. `build.py` emits a complete document (doctype, charset, viewport); without the viewport meta a phone lays the page out at 980px virtual width.
+
+## Publishing
+
+The site is public at **https://piers.qa/krill/**, from the `pjcc/krill` repo, deployed by `.github/workflows/deploy.yml` on a daily 04:10 UTC schedule. `piers.qa/krill` works because `pjcc/pjcc.github.io` carries the `piers.qa` CNAME, so project pages inherit it.
+
+The workflow holds `contents: write` in order to commit each day's capture back to `data/`.
+
+There is also an artifact copy at https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9-0ae3c0aa653c - build it with `--fragment` and pass that URL as `url` when publishing.
 
 ## Cache
 
@@ -55,6 +75,8 @@ Missing parent directories are created, and the page is written to a `.tmp` then
 
 Writes are throttled to one every 5 s rather than one per response, with a forced flush before the prune - a 429 backoff is at least 2 s, so a crash mid-run still resumes within a few requests.
 
+`get()` accepts **https only**. Thumbnail URLs come from a remote API response and are inlined into a published page, and `urlopen` otherwise also honours `file:`, `ftp:` and `data:`.
+
 ## Known outstanding
 
-- Nothing blocking. A daily schedule (Task Scheduler locally, or cron on a host) is the remaining step, and needs no code change
+- The archive grows ~440 KB a day in git, nearly all base64 thumbnails. Extracting images to separate deduplicated files would roughly halve it; the data files are the source of truth, so that migration stays open

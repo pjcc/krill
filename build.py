@@ -2,7 +2,9 @@
 import json, os, sys, html, datetime
 
 DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_OUT = os.path.join(DIR, 'index.html')
+# One file per captured day. /api/reveal serves only the live puzzle, so this is
+# the only record that a given day ever existed - it is committed, not derived.
+DATA_DIR = os.path.join(DIR, 'data')
 
 
 # Served from a web root there is no host to supply a document shell, and with
@@ -19,10 +21,10 @@ DOC_MID = '</head>\n<body>\n'
 DOC_CLOSE = '\n</body>\n</html>\n'
 
 
-def resolve_out(out=None, argv=None):
+def resolve_out(out=None, argv=None, default=None):
     """Output path: explicit argument, then --out PATH / --out=PATH, then
-    $KRILLION_OUT, then index.html beside the script. A cron job needs to write
-    straight into a web root rather than here."""
+    $KRILLION_OUT, then the caller's default. It is a directory for the site
+    build and a file for --fragment, which produces a single page."""
     if out:
         return os.path.abspath(out)
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -31,7 +33,8 @@ def resolve_out(out=None, argv=None):
             return os.path.abspath(argv[i + 1])
         if a.startswith('--out='):
             return os.path.abspath(a.split('=', 1)[1])
-    return os.path.abspath(os.environ.get('KRILLION_OUT') or DEFAULT_OUT)
+    return os.path.abspath(os.environ.get('KRILLION_OUT')
+                           or default or os.path.join(DIR, '_site'))
 
 HEAD = """<title>The Krillion Dive</title>
 <link rel="icon" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E%F0%9F%A6%90%3C/text%3E%3C/svg%3E">
@@ -170,6 +173,23 @@ a:focus-visible{outline:2px solid var(--krill);outline-offset:3px}
   color:var(--caution);border:1px solid var(--caution-line);padding:2px 6px 1px;
 }
 
+.nav{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:baseline;
+  gap:12px;
+  margin:26px 0 0;
+  padding:14px 0 0;
+}
+.nav > :last-child{text-align:right}
+.nav > :nth-child(2){text-align:center}
+.nav a{color:var(--mist);text-decoration:none;border-bottom:1px solid transparent;padding-bottom:2px}
+.nav a:hover{color:var(--krill);border-bottom-color:var(--krill)}
+/* Ends of the archive: shown, not hidden, so the row keeps its three columns
+   and the reader can see there is nothing further back. */
+.nav .off{color:#3d5065}
+section + .nav{margin-top:52px;border-top:1px solid var(--line)}
+
 footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--line)}
 footer p{margin:0 0 7px;font-size:11px;line-height:1.7;color:var(--dimmer)}
 footer code{font-family:"IBM Plex Mono",monospace;color:var(--mist);text-transform:none;letter-spacing:0}
@@ -233,11 +253,39 @@ def entry_html(it):
     return '<div class="entry">' + plate + '<div>' + ''.join(bits) + '</div></div>'
 
 
-def main(out=None, fragment=None):
-    path = resolve_out(out)
-    if fragment is None:
-        fragment = '--fragment' in sys.argv[1:]
-    d = json.load(open(os.path.join(DIR, 'data.json'), encoding='utf-8'))
+def nav_html(dates, i, root=False):
+    """Previous / today / next across the archive. The reveal endpoint only ever
+    serves the live puzzle, so the archive grows forward from the day it started
+    and there is nothing behind the first captured day to link to.
+
+    `root` is the copy of the latest day served at /, one level up from the
+    dated pages, so its links must not climb out of the site."""
+    up = '' if root else '../'
+    prev = dates[i - 1] if i > 0 else None
+    nxt = dates[i + 1] if i < len(dates) - 1 else None
+    cells = []
+    if prev:
+        cells.append('<a class="mono" href="' + up + esc(prev) + '/">&larr; ' + esc(short(prev)) + '</a>')
+    else:
+        cells.append('<span class="mono off">&larr; start of archive</span>')
+    if dates[i] == dates[-1]:
+        cells.append('<span class="mono off">today</span>')
+    else:
+        cells.append('<a class="mono" href="' + (up or './') + '">today</a>')
+    if nxt:
+        cells.append('<a class="mono" href="' + up + esc(nxt) + '/">' + esc(short(nxt)) + ' &rarr;</a>')
+    else:
+        cells.append('<span class="mono off">latest &rarr;</span>')
+    return '<nav class="nav">' + ''.join(cells) + '</nav>'
+
+
+def short(date):
+    return datetime.date.fromisoformat(date).strftime('%d %b').lstrip('0')
+
+
+def page(d, nav='', archived=False):
+    """One day's page. `nav` is empty for the single-file build, which has
+    nowhere to navigate to."""
     date = d['date']
     pretty = datetime.date.fromisoformat(date).strftime('%d %B %Y').lstrip('0')
 
@@ -256,33 +304,41 @@ def main(out=None, fragment=None):
             + '</div>' + entries + '</section>'
         )
 
-    body = (
+    heading = ('Krillion <em>top hits</em> today' if not archived
+               else 'Krillion <em>top hits</em>, ' + esc(short(date)))
+    standfirst = ('The rarest accepted answer to each of '
+                  + ("today's" if not archived else 'that day&rsquo;s')
+                  + ' seven prompts, and what each one actually is.')
+
+    return (
         '<div class="wrap">\n<header>\n'
         '  <div class="eyebrow">'
         '<span class="mono">Krillion &middot; the daily dive</span>'
         '<span class="mono">' + esc(pretty) + '</span></div>\n'
-        '  <h1>Krillion <em>top hits</em> today</h1>\n'
-        '  <p class="standfirst">The rarest accepted answer to each of today\'s seven prompts, '
-        'and what each one actually is.</p>\n'
+        '  <h1>' + heading + '</h1>\n'
+        '  <p class="standfirst">' + standfirst + '</p>\n'
         '  <div class="gauge">'
         '<div><b>' + format(n_total, ',') + '</b><span class="mono">answers accepted</span></div>'
         '<div><b>' + str(n_answers) + '</b><span class="mono">worth a hundred</span></div>'
         '<div><b>' + str(n_obvious) + '</b><span class="mono">worth only ten</span></div>'
-        '</div>\n</header>\n'
-        + ''.join(secs) +
+        '</div>\n' + nav + '</header>\n'
+        + ''.join(secs) + '\n' + nav +
         '\n<footer>\n'
         '  <p>Answers from <code>krillion.io/api/reveal?date=' + esc(date) + '</code>, '
-        'which serves the live puzzle only. Summaries and images from Wikipedia, CC BY-SA, linked per entry.</p>\n'
+        'which serves the live puzzle only, so this archive starts the day it was built '
+        'and cannot be backfilled. Summaries and images from Wikipedia, CC BY-SA, linked per entry.</p>\n'
         '</footer>\n</div>'
     )
 
+
+def wrap_doc(body, fragment=False):
     # Emit pure ASCII: Wikipedia extracts are full of non-breaking spaces and
     # accents, and the page renders in hosts that may not declare a charset.
-    if fragment:
-        doc = HEAD + body
-    else:
-        doc = DOC_OPEN + HEAD + DOC_MID + body + DOC_CLOSE
-    doc = doc.encode('ascii', 'xmlcharrefreplace').decode('ascii')
+    doc = HEAD + body if fragment else DOC_OPEN + HEAD + DOC_MID + body + DOC_CLOSE
+    return doc.encode('ascii', 'xmlcharrefreplace').decode('ascii')
+
+
+def write(path, doc):
     parent = os.path.dirname(path)
     if parent and not os.path.isdir(parent):
         os.makedirs(parent, exist_ok=True)
@@ -290,7 +346,46 @@ def main(out=None, fragment=None):
     tmp = path + '.tmp'
     open(tmp, 'w', encoding='ascii').write(doc)
     os.replace(tmp, path)
-    print('wrote', path, '(%.0f KB)' % (len(doc) / 1024))
+    return len(doc)
+
+
+def load_archive():
+    """Every day we have ever captured, oldest first."""
+    if not os.path.isdir(DATA_DIR):
+        return []
+    out = []
+    for name in sorted(os.listdir(DATA_DIR)):
+        if name.endswith('.json'):
+            out.append(json.load(open(os.path.join(DATA_DIR, name), encoding='utf-8')))
+    return out
+
+
+def main(out=None, fragment=None):
+    if fragment is None:
+        fragment = '--fragment' in sys.argv[1:]
+    days = load_archive()
+    if not days:
+        raise SystemExit('no data in ' + DATA_DIR + ' - run fetch.py first')
+
+    if fragment:
+        # Single self-contained page of the latest day, for a host that supplies
+        # its own document shell and cannot follow links to sibling pages.
+        path = resolve_out(out, default=os.path.join(DIR, 'index.html'))
+        n = write(path, wrap_doc(page(days[-1]), fragment=True))
+        print('wrote', path, '(%.0f KB)' % (n / 1024))
+        return
+
+    site = resolve_out(out, default=os.path.join(DIR, '_site'))
+    dates = [d['date'] for d in days]
+    total = 0
+    for i, d in enumerate(days):
+        doc = wrap_doc(page(d, nav_html(dates, i), archived=(i < len(days) - 1)))
+        total += write(os.path.join(site, d['date'], 'index.html'), doc)
+    # The root is today's page, with the nav pointing into the archive.
+    root = page(days[-1], nav_html(dates, len(days) - 1, root=True))
+    total += write(os.path.join(site, 'index.html'), wrap_doc(root))
+    print('wrote %d pages (%d archived) to %s (%.1f MB)'
+          % (len(days) + 1, len(days) - 1, site, total / 1048576.0))
 
 
 if __name__ == '__main__':
