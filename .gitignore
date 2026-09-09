@@ -14,3 +14,6 @@ reference/
 
 __pycache__/
 *.pyc
+
+# Fragment build for the artifact host, which supplies its own document shell.
+.artifact.html
