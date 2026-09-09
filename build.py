@@ -5,6 +5,20 @@ DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_OUT = os.path.join(DIR, 'index.html')
 
 
+# Served from a web root there is no host to supply a document shell, and with
+# no viewport meta a phone lays the page out at a 980px virtual width - the
+# 760px column then sits centred behind wide gutters, scaled down. Artifact
+# hosts inject their own shell and reject a nested one, hence --fragment.
+DOC_OPEN = ('<!doctype html>\n<html lang="en">\n<head>\n'
+            '<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
+            '<meta name="color-scheme" content="dark">\n'
+            '<meta name="description" content="The rarest accepted answer to each of '
+            "today's seven Krillion prompts, and what each one actually is.\">\n")
+DOC_MID = '</head>\n<body>\n'
+DOC_CLOSE = '\n</body>\n</html>\n'
+
+
 def resolve_out(out=None, argv=None):
     """Output path: explicit argument, then --out PATH / --out=PATH, then
     $KRILLION_OUT, then index.html beside the script. A cron job needs to write
@@ -20,6 +34,7 @@ def resolve_out(out=None, argv=None):
     return os.path.abspath(os.environ.get('KRILLION_OUT') or DEFAULT_OUT)
 
 HEAD = """<title>The Krillion Dive</title>
+<link rel="icon" href="data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E%F0%9F%A6%90%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
@@ -160,11 +175,28 @@ footer p{margin:0 0 7px;font-size:11px;line-height:1.7;color:var(--dimmer)}
 footer code{font-family:"IBM Plex Mono",monospace;color:var(--mist);text-transform:none;letter-spacing:0}
 
 @media (max-width:560px){
-  .entry{grid-template-columns:88px 1fr;gap:16px}
-  .plate{width:88px;height:88px}
-  .gauge{flex-wrap:wrap}
-  .gauge div{flex:1 0 50%;border-bottom:1px solid var(--line-soft)}
-  .phead{flex-wrap:wrap}
+  .wrap{padding:0 18px 64px}
+  header{padding:40px 0 0}
+  h1{font-size:38px;letter-spacing:-.01em}
+  .standfirst{font-size:16px;margin-top:14px}
+  .gauge{margin-top:28px}
+  /* These were flex rules left over from a flex .gauge and did nothing to a
+     grid, so the three cells stayed at desktop padding on a phone. */
+  .gauge div{padding:13px 12px 14px}
+  .gauge div:first-child{padding-left:0}
+  .gauge b{font-size:21px}
+  .gauge span{margin-top:5px;font-size:10px;letter-spacing:.06em}
+  section{margin-top:40px}
+  .phead{flex-wrap:wrap;gap:10px}
+  h2{font-size:22px}
+  /* Beside an 84px plate the measure was down to 278px, with a tall dead
+     gutter under the image. Floating it lets the text reclaim the full width
+     once the image ends. */
+  .entry{display:block;padding:20px 0}
+  .plate{float:left;width:84px;height:84px;margin:5px 14px 6px 0}
+  .entry::after{content:"";display:block;clear:both}
+  h3{font-size:20px}
+  .extract{font-size:17px}
 }
 </style>"""
 
@@ -201,8 +233,10 @@ def entry_html(it):
     return '<div class="entry">' + plate + '<div>' + ''.join(bits) + '</div></div>'
 
 
-def main(out=None):
+def main(out=None, fragment=None):
     path = resolve_out(out)
+    if fragment is None:
+        fragment = '--fragment' in sys.argv[1:]
     d = json.load(open(os.path.join(DIR, 'data.json'), encoding='utf-8'))
     date = d['date']
     pretty = datetime.date.fromisoformat(date).strftime('%d %B %Y').lstrip('0')
@@ -244,7 +278,11 @@ def main(out=None):
 
     # Emit pure ASCII: Wikipedia extracts are full of non-breaking spaces and
     # accents, and the page renders in hosts that may not declare a charset.
-    doc = (HEAD + body).encode('ascii', 'xmlcharrefreplace').decode('ascii')
+    if fragment:
+        doc = HEAD + body
+    else:
+        doc = DOC_OPEN + HEAD + DOC_MID + body + DOC_CLOSE
+    doc = doc.encode('ascii', 'xmlcharrefreplace').decode('ascii')
     parent = os.path.dirname(path)
     if parent and not os.path.isdir(parent):
         os.makedirs(parent, exist_ok=True)
