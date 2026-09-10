@@ -112,6 +112,13 @@ HINTS = {
 def hint_for(prompt):
     return next((v for k, v in HINTS.items() if k in prompt), '')
 
+# Hand-checked Wikipedia titles for answers the search resolves wrongly - 'Oca',
+# the Andean tuber, found Alexandria Ocasio-Cortez. Consulted before any search.
+# A null title means showing no article beats showing the one the search found.
+# reenrich.py applies a change here to days already captured.
+OVERRIDES_PATH = os.path.join(DIR, 'overrides.json')
+OVERRIDES = json.load(open(OVERRIDES_PATH, encoding='utf-8')) if os.path.exists(OVERRIDES_PATH) else {}
+
 def enc(t):
     return urllib.parse.quote(t.replace(' ', '_'), safe='')
 
@@ -129,6 +136,9 @@ def resolve(answer, hint):
     """Try the literal title, then search hits, then shorter prefixes of the
     answer. Returns (summary, approx) - approx flags a prefix fallback, which is
     a related article rather than the answer itself."""
+    if answer in OVERRIDES:
+        s = summary(OVERRIDES[answer]) if OVERRIDES[answer] else None
+        return (s if s and s.get('extract') else None), False
     for title in [answer] + search(answer, hint):
         s = summary(title)
         if s and s.get('extract') and s.get('type') != 'disambiguation':
@@ -158,6 +168,58 @@ def data_uri(url):
     except Exception:
         return None
 
+def enrich_item(answer, quip, hint):
+    """One hundred-pointer, resolved to its Wikipedia summary and thumbnail."""
+    s, approx = resolve(answer, hint)
+    thumb = (s.get('thumbnail') or {}).get('source') if s else None
+    item = {
+        'answer': answer,
+        'quip': quip,
+        'title': s['title'] if s else None,
+        'description': s.get('description') if s else None,
+        'extract': s['extract'] if s else None,
+        'url': s['content_urls']['desktop']['page'] if s else None,
+        'image': data_uri(thumb),
+        'approx': approx,
+    }
+    print(f"  {answer} -> {item['title']}{' (approx)' if approx else ''} | img: {bool(item['image'])}", flush=True)
+    return item
+
+def enrich(reveal, date):
+    """A reveal-shaped answer key -> one day's data file: the hundred-pointers
+    resolved to Wikipedia, plus per-prompt totals and tier counts. Shared with
+    backfill.py, so a recovered day renders exactly like a captured one."""
+    out = {'date': date, 'prompts': []}
+    for p in reveal['prompts']:
+        hint = hint_for(p['text'])
+        items = []
+        for a in p['answers']:
+            if a['tier'] != 'krillion':
+                continue
+            items.append(enrich_item(a['answer'], a.get('quip', ''), hint))
+        tiers = {}
+        for a in p['answers']:
+            tiers[a['tier']] = tiers.get(a['tier'], 0) + 1
+        out['prompts'].append({
+            'text': p['text'],
+            'total': len(p['answers']),
+            'tiers': tiers,
+            'items': items,
+        })
+    return out
+
+def write_day(out):
+    """Written the same way as the pages: a half-written capture cannot be
+    re-pulled the next day, because the endpoint has moved on by then."""
+    import build
+    os.makedirs(build.DATA_DIR, exist_ok=True)
+    day_path = os.path.join(build.DATA_DIR, out['date'] + '.json')
+    tmp = day_path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(out, f, indent=1, ensure_ascii=False)
+    os.replace(tmp, day_path)
+    return day_path
+
 def main():
     import build
     out_path = build.resolve_out()   # --out PATH / $KRILLION_OUT / next to the script
@@ -174,42 +236,7 @@ def main():
         return
 
     reveal = get(f'https://krillion.io/api/reveal?date={date}')
-    out = {'date': date, 'prompts': []}
-    for p in reveal['prompts']:
-        hint = hint_for(p['text'])
-        items = []
-        for a in p['answers']:
-            if a['tier'] != 'krillion':
-                continue
-            s, approx = resolve(a['answer'], hint)
-            thumb = (s.get('thumbnail') or {}).get('source') if s else None
-            items.append({
-                'answer': a['answer'],
-                'quip': a.get('quip', ''),
-                'title': s['title'] if s else None,
-                'description': s.get('description') if s else None,
-                'extract': s['extract'] if s else None,
-                'url': s['content_urls']['desktop']['page'] if s else None,
-                'image': data_uri(thumb),
-                'approx': approx,
-            })
-            print(f"  {a['answer']} -> {items[-1]['title']}"
-                  f"{' (approx)' if approx else ''} | img: {bool(items[-1]['image'])}", flush=True)
-        tiers = {}
-        for a in p['answers']:
-            tiers[a['tier']] = tiers.get(a['tier'], 0) + 1
-        out['prompts'].append({
-            'text': p['text'],
-            'total': len(p['answers']),
-            'tiers': tiers,
-            'items': items,
-        })
-
-    # Written the same way as the pages: a half-written capture cannot be
-    # re-pulled the next day, because the endpoint has moved on by then.
-    tmp = day_path + '.tmp'
-    json.dump(out, open(tmp, 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
-    os.replace(tmp, day_path)
+    write_day(enrich(reveal, date))
     print()
     print('wrote', day_path)
 

@@ -367,9 +367,9 @@ def page(d, nav='', archived=False, live=False):
         '</div>\n' + nav + '</header>\n'
         + ''.join(secs) + '\n' + nav +
         '\n<footer>\n'
-        '  <p>Answers from <code>krillion.io/api/reveal?date=' + esc(date) + '</code>, '
-        'which serves the live puzzle only, so this archive starts the day it was built '
-        'and cannot be backfilled. Summaries and images from Wikipedia, CC BY-SA, linked per entry.</p>\n'
+        '  <p>Answers from Krillion&rsquo;s daily reveal, <code>krillion.io/api/reveal</code>, '
+        'captured each day since 9 September 2026. Earlier days were recovered from public '
+        'mirrors of it. Summaries and images from Wikipedia, CC BY-SA, linked per entry.</p>\n'
         '</footer>\n</div>'
         + ('\n' + LIVE_SCRIPT if live else '')
     )
