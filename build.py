@@ -89,7 +89,7 @@ h1{
   text-wrap:balance;
 }
 h1 em{font-style:italic;font-weight:500;color:var(--krill)}
-.standfirst{color:var(--mist);font-size:17px;margin:16px 0 0;max-width:52ch}
+.standfirst{color:var(--mist);font-size:17px;margin:16px 0 0}
 .gauge{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -181,8 +181,11 @@ a:focus-visible{outline:2px solid var(--krill);outline-offset:3px}
   margin:26px 0 0;
   padding:14px 0 0;
 }
-.nav > :last-child{text-align:right}
-.nav > :nth-child(2){text-align:center}
+/* Grid items stretch to fill their column, so without justify-self the hover
+   rule under a link ran the full width of its third of the row. */
+.nav > *{justify-self:start}
+.nav > :nth-child(2){justify-self:center}
+.nav > :last-child{justify-self:end}
 .nav a{color:var(--mist);text-decoration:none;border-bottom:1px solid transparent;padding-bottom:2px}
 .nav a:hover{color:var(--krill);border-bottom-color:var(--krill)}
 /* Ends of the archive: shown, not hidden, so the row keeps its three columns
@@ -267,7 +270,7 @@ def nav_html(dates, i, root=False):
     if prev:
         cells.append('<a class="mono" href="' + up + esc(prev) + '/">&larr; ' + esc(short(prev)) + '</a>')
     else:
-        cells.append('<span class="mono off">&larr; start of archive</span>')
+        cells.append('<span class="mono off">start of archive</span>')
     if dates[i] == dates[-1]:
         cells.append('<span class="mono off">today</span>')
     else:
@@ -275,7 +278,7 @@ def nav_html(dates, i, root=False):
     if nxt:
         cells.append('<a class="mono" href="' + up + esc(nxt) + '/">' + esc(short(nxt)) + ' &rarr;</a>')
     else:
-        cells.append('<span class="mono off">latest &rarr;</span>')
+        cells.append('<span class="mono off">latest</span>')
     return '<nav class="nav">' + ''.join(cells) + '</nav>'
 
 
