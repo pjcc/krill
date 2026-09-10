@@ -8,6 +8,9 @@ Scrapes the daily answer key from the game at https://krillion.io and renders th
 
 - `fetch.py` - pulls the date and answers, resolves each answer to a Wikipedia article, embeds the thumbnail as a data URI, writes `data.json`, then calls `build.py`
 - `build.py` - renders `data.json` into `index.html`; owns all styling
+- `backfill.py` - recovers days before the daily capture began from the Wayback Machine and public mirrors, enriched through the same `fetch.enrich()` as a live day
+- `overrides.json` - hand-checked Wikipedia titles for answers the search resolves wrongly; `null` means show no article. `fetch.resolve()` consults it before searching
+- `reenrich.py` - re-resolves every captured answer listed in `overrides.json`, in place, then rebuilds. Run it after adding an override
 - `cache.json` - every HTTP response keyed by URL; delete to force a fresh pull
 - `reference/` - raw dumps from the day it was built
 
@@ -20,6 +23,8 @@ python C:\dev\krillion-daily\fetch.py
 ## The data source
 
 `GET https://krillion.io/api/reveal?date=YYYY-MM-DD` returns the complete scored answer key - every accepted answer with its tier, score and quip - unauthenticated. It serves **only the live puzzle**: past and future dates return "That answer sheet is not publicly available", so the sheet has to be pulled on the day. The puzzle rolls at 04:00 UTC.
+
+Past days are **not free, but not gone**: Krillion serves every day from a paid archive (`/api/archive/<dayNumber>` returns `402 {"locked":true}` without an `x-krillion-unlock` purchase token), and public mirrors hold every day from day one, 2026-07-16. Do not probe the archive routes without a token - that is testing a paywall for a bypass.
 
 Tiers are krillion 100, deepcut 85, rare 60, schooler 30, plankton 10. Deepcut is the catch-all bulk tier holding roughly 90% of answers, so the only list worth knowing is the handful of plankton answers to avoid.
 
@@ -39,7 +44,7 @@ To update it, pass that URL as `url` when publishing. Publishing without it crea
 
 ## Archive and navigation
 
-`data/<date>.json` is one enriched capture per day, and it is **tracked, not derived**. `/api/reveal` serves only the live puzzle - every other date, past or future, returns "That answer sheet is not publicly available" - so a day that is not captured on the day is gone permanently. The archive starts 2026-09-09 and cannot be backfilled.
+`data/<date>.json` is one enriched capture per day, and it is **tracked, not derived**. `/api/reveal` serves only the live puzzle - every other date, past or future, returns "That answer sheet is not publicly available" - so a day the daily run misses is gone from the free endpoint. Daily capture started 2026-09-09; everything earlier came from `backfill.py`.
 
 `build.py` renders every captured day: `/<date>/index.html` for each, plus `/index.html` as a copy of the latest. Each page carries a previous / today / next nav, top and bottom. The root copy uses different link prefixes to the dated pages, since it sits one level up - `nav_html(..., root=True)`.
 
@@ -48,6 +53,22 @@ Because the data is kept rather than the HTML, a design change re-renders the wh
 The root page, and only the root, carries `LIVE_SCRIPT`: on `pageshow` and `visibilitychange`, if its `data-day` is behind the live puzzle day (UTC now minus 4 hours) it fetches itself with `cache: 'no-cache'` and reloads only if the response holds a newer `data-day`. Otherwise it stays put silently - no banner, by the user's choice - and re-checks at most once a minute. It covers a tab left open across the roll and a visit served from the browser's 10-minute Pages cache. A `sessionStorage` flag allows one reload per new day per tab, and no storage means no reload, so it cannot loop. Dated pages never get it, and neither does `--fragment` (the artifact host blocks fetch).
 
 `fetch.py` skips the pull when `data/<date>.json` already exists, so the push and schedule triggers do not re-fetch the same day. `--force` re-pulls if a capture was interrupted.
+
+## Backfill
+
+`backfill.py` fills every missing day from 2026-07-16 (day #1) up to the latest capture, or just the dates given as arguments. Per day, best source first:
+
+1. **Wayback Machine** capture of `/api/reveal` - official, but only 2026-08-03 exists. Found with one CDX prefix query, since per-day CDX calls time out
+2. **krillion-game.com** `/archive/<date>` - `answer-row` divs carry `data-answer`, `data-score`, `data-prompt`, `data-text`. Verified identical to our own 9 Sep capture on all 4,772 answers and scores. No quips. Scores map 1:1 to tiers, including `tooclever` at 15; an unknown score fails the day rather than guessing
+3. **krilliongame.net** `/archive/<date>/` - `<h2 class="prompt-text">` sections of `chip` spans. Its answer lists matched the official key on 9 Sep, but 134 mid-tier scores differ, so it supplies only: quips (63/63 exact on 9 Sep, present from roughly early September), prompts krillion-game.com is **missing** (2026-07-30 'type of tea'), and answers for prompts krillion-game.com has **cut short** (2026-07-30 rodents: 5 vs 39). Cut short means krilliongame.net has >= 5 answers it lacks and they are >= a quarter of its list; the merge then keeps krillion-game.com's answers and scores and appends only the missing ones - replacing the whole prompt dropped a hundred-pointer on 2026-09-03
+
+Prompts get **reworded during the day** (2026-08-31: 'culinarily and technically' -> 'or'), so when both mirrors list seven prompts, a mismatched wording pairs by position if at least half the smaller answer list is shared. Anything else raises rather than guessing.
+
+**krilliongame.com and krillion.fun are off-limits**: their robots.txt disallows ClaudeBot and other AI crawlers.
+
+Recovered data files carry a `source` field. The pages deliberately do not show it per day - the footer says once that earlier days came from mirrors, by the user's choice. Parsed answer keys are cached in `.backfill/` (untracked) so a rerun after a Wikipedia 429 skips the mirrors; the response cache is pruned after every day to stay inside its cap.
+
+`HINTS` in `fetch.py` only covers the 9 Sep prompts, so other days resolve with no search hint, and the title search misfires on short or obscure answers: 'Oca' found Alexandria Ocasio-Cortez, 'Enganche' found Enhanced interrogation techniques, 'The Maschinenmensch' found the article 'The'. Across the 461 hundred-pointers of 2026-07-16 to 2026-09-10, 28 were wrong and now sit in `overrides.json`. Many other matches look wrong and are right - scientific or redirect titles (Pistol shrimp -> Alpheidae), or a parent article (Tatanga -> Super Mario Land) - so review by eye rather than by title similarity. Check a candidate title exists on `api/rest_v1/page/summary` before adding it; a redirect can land somewhere absurd ('Krayon' -> Krita).
 
 ## Output path
 
@@ -83,4 +104,4 @@ Writes are throttled to one every 5 s rather than one per response, with a force
 
 ## Known outstanding
 
-- The archive grows ~440 KB a day in git, nearly all base64 thumbnails. Extracting images to separate deduplicated files would roughly halve it; the data files are the source of truth, so that migration stays open
+- The archive grows ~440 KB a day in git, nearly all base64 thumbnails, and the backfill added 55 days at once - `data/` was 23 MB on 2026-09-10. Extracting images to separate deduplicated files would roughly halve it; the data files are the source of truth, so that migration stays open

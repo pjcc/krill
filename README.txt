@@ -21,6 +21,9 @@ Missing directories are created, and each page is written to a .tmp and renamed,
 FILES
 
 fetch.py - pulls the date from krillion.io/api/today, the answers from /api/reveal, resolves each answer to a Wikipedia article, embeds the thumbnail as a data URI, writes data.json, then calls build.py
+backfill.py - recovers days from before the daily capture began (see BACKFILL below) and enriches them with the same code as fetch.py, then rebuilds
+overrides.json - hand-checked Wikipedia titles for answers the search gets wrong; null means show no article rather than the wrong one
+reenrich.py - re-resolves every captured answer listed in overrides.json, in place, then rebuilds
 build.py - renders data.json into index.html; owns all the styling
 _site/ - the generated site: index.html is the latest day, <date>/index.html is each archived day. Self-contained at roughly 441 KB per page (images are inline data URIs)
 data/<date>.json - one enriched capture per day. TRACKED IN GIT, not derived: see below
@@ -33,7 +36,27 @@ HOW THE DATA IS OBTAINED
 
 GET https://krillion.io/api/reveal?date=YYYY-MM-DD returns the complete scored answer key: every accepted answer with its tier, score and quip. No authentication. It serves the live puzzle only - past and future dates return "That answer sheet is not publicly available", so the sheet has to be pulled on the day.
 
-That is why data/<date>.json is committed rather than regenerated. A day not captured on the day is gone permanently, and the archive cannot be backfilled: it starts on 2026-09-09 and grows forward. If the scheduled run fails, that day is simply missing from the archive for good.
+That is why data/<date>.json is committed rather than regenerated. The daily capture started on 2026-09-09; a day it misses is gone from the free endpoint for good.
+
+
+BACKFILL
+
+Past days are not gone, only not free. Krillion serves every day from a paid archive (/api/archive/<day number> returns 402 locked without a purchase token), and two public mirrors of the reveal endpoint hold every day from day one, 2026-07-16. backfill.py recovers each missing day from, in order of preference:
+
+1. The Wayback Machine's capture of /api/reveal - official, but it holds only 2026-08-03
+2. krillion-game.com/archive/<date> - every answer with its score and prompt. Checked against our own 9 Sep capture: all 4,772 answers and every score identical. No quips
+3. krilliongame.net/archive/<date>/ - quips, which it carries from roughly early September, plus any prompt krillion-game.com is missing (2026-07-30 lacks one) or has cut short (five days list a fraction of the answers). A cut-short prompt keeps krillion-game.com's answers and scores and adds only what it lacks, because krilliongame.net's mid-tier scores drift from the official ones. Prompts reworded during the day are paired by position when their answer lists overlap
+
+krilliongame.com and krillion.fun also mirror recent days but disallow AI crawlers in robots.txt, so they are not used. Recovered days carry a "source" field in their data file; the pages do not show it, and the footer says once that earlier days came from mirrors. Days before about September have no quips.
+
+python C:\dev\krillion-daily\backfill.py              every missing day since day one
+python C:\dev\krillion-daily\backfill.py 2026-08-03   just that day
+
+Parsed answer keys are kept in .backfill/ (not tracked), so a rerun after a Wikipedia rate limit does not hit the mirrors again.
+
+The Wikipedia title search sometimes lands on the wrong article for short or obscure answers - "Oca", the Andean tuber, found Alexandria Ocasio-Cortez. Wrong matches found by eye go in overrides.json, then:
+
+python C:\dev\krillion-daily\reenrich.py
 
 Each page carries a previous / today / next navigation across whatever days have been captured. Because the enriched data is what is kept, rather than the finished HTML, a design change re-renders the entire archive on the next run.
 
