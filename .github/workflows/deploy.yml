@@ -2,11 +2,15 @@ name: Build and deploy
 
 on:
   schedule:
-    # The puzzle rolls at 04:00 UTC; give it ten minutes. GitHub may run this
-    # late under load, which is fine - /api/reveal serves the live puzzle all day.
-    # It has to run every day though: a missed day cannot be recovered, because
-    # the endpoint refuses every date except the current one.
-    - cron: '10 4 * * *'
+    # The puzzle rolls at 04:00 UTC. GitHub schedules are best-effort: the
+    # single 04:10 trigger first fired at 08:53 on 10 Sep 2026, leaving the site
+    # on the previous day for nearly five hours. So it fires every 15 minutes
+    # through the morning, off the top of the hour where the queue is worst.
+    # Whichever run lands first captures and deploys; the rest see the day is
+    # already captured and exit without deploying. It has to land every day - a
+    # missed day cannot be recovered, because the endpoint refuses every date
+    # except the current one.
+    - cron: '7,22,37,52 4-12 * * *'
   workflow_dispatch:
   push:
     branches: [main]
@@ -29,7 +33,13 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      # A scheduled run checks out the commit that was current when it was
+      # triggered, which can predate a capture pushed by an earlier run still
+      # ahead of it in the concurrency queue - it would then re-capture and fail
+      # to push. The branch tip at run time is always the latest capture.
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -38,22 +48,61 @@ jobs:
       # fetch.py skips the pull if today is already captured, so the push and
       # schedule triggers do not re-fetch the same day.
       - name: Capture today and build the site
+        id: fetch
         run: python fetch.py --out _site
 
-      - name: Commit today's capture
+      # capture.log gets one line per run that tried to capture a day - each
+      # failure, then the success. A run that finds the day already captured adds
+      # nothing, or dozens of scheduled no-ops a day would bury the lines that
+      # matter. always() so a failed pull still records itself; the job stays red.
+      - name: Commit today's capture and the run log
+        id: capture
+        if: always() && steps.fetch.outcome != 'skipped'
+        env:
+          FETCH: ${{ steps.fetch.outcome }}
+          EVENT: ${{ github.event_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [ -z "$(git status --porcelain data)" ]; then
-            echo "No new capture to commit."
+          if [ "$FETCH" = success ] && [ -z "$(git status --porcelain data)" ]; then
+            echo "Already captured - nothing to commit."
             exit 0
           fi
+          if [ "$FETCH" = success ]; then
+            outcome=captured
+            day=$(ls data | tail -1 | sed 's/\.json$//')
+          else
+            outcome=failed
+            # The puzzle rolls at 04:00 UTC, so the live day is the UTC date four hours ago.
+            day=$(date -u -d '-4 hours' +%F)
+          fi
+          late=$(( ($(date -u +%s) - $(date -u -d "$day 04:00" +%s)) / 60 ))
+          fails=$(grep -cs "^$day .* failed " capture.log || true)
+          printf '%s  %s  %-8s  +%dh%02dm  try %d  %-17s  %s\n' \
+            "$day" "$(date -u +%H:%M:%SZ)" "$outcome" $((late / 60)) $((late % 60)) \
+            $(( ${fails:-0} + 1 )) "$EVENT" "$RUN_URL" | tee -a capture.log
+
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data
-          git commit -m "Capture $(ls data | tail -1 | sed 's/\.json$//')"
+          if [ "$outcome" = captured ]; then
+            git add data capture.log
+            git commit -m "Capture $day"
+          else
+            # data/ is left alone: a failed pull may have written a partial day
+            git add capture.log
+            git commit -m "Log failed capture of $day"
+          fi
           git push
+          if [ "$outcome" = captured ]; then
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
 
+      # Most scheduled runs find the day already captured, and redeploying an
+      # unchanged site dozens of times a day is only noise. Pushes and manual
+      # runs always deploy, so a code change or a failed deploy can be pushed out.
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'schedule' || steps.capture.outputs.new == 'true'
         with:
           path: _site
       - id: deploy
+        if: github.event_name != 'schedule' || steps.capture.outputs.new == 'true'
         uses: actions/deploy-pages@v4

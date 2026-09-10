@@ -61,7 +61,9 @@ Pages are written to a `.tmp` and renamed, so a web server never serves one half
 
 ## Publishing
 
-The site is public at **https://piers.qa/krill/**, from the `pjcc/krill` repo, deployed by `.github/workflows/deploy.yml` on a daily 04:10 UTC schedule. `piers.qa/krill` works because `pjcc/pjcc.github.io` carries the `piers.qa` CNAME, so project pages inherit it.
+The site is public at **https://piers.qa/krill/**, from the `pjcc/krill` repo, deployed by `.github/workflows/deploy.yml`. The schedule fires every 15 minutes from 04:07 to 12:52 UTC, because GitHub cron is best-effort - the original single 04:10 trigger first fired at 08:53, leaving the site a day behind all morning. The first run to land captures and deploys; later scheduled runs find the day captured and skip the deploy. Checkout uses `ref: main`, not the triggering sha, so a queued run sees a capture pushed by the run ahead of it.
+
+`capture.log` is the run history: one line per run that tried to capture a day (each failure, then the success), with time since the 04:00 roll, try number, trigger and run URL. The workflow appends and commits it; runs that find the day already captured add nothing. A day with no line at all means no run fired. The log only starts on 2026-09-10 - the 09 Sep capture was pulled by hand. `piers.qa/krill` works because `pjcc/pjcc.github.io` carries the `piers.qa` CNAME, so project pages inherit it.
 
 The workflow holds `contents: write` in order to commit each day's capture back to `data/`.
 
