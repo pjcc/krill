@@ -224,6 +224,45 @@ footer code{font-family:"IBM Plex Mono",monospace;color:var(--mist);text-transfo
 </style>"""
 
 
+# Root page only. A tab left open across the 04:00 UTC roll, or a visit served
+# from the browser's 10-minute Pages cache, keeps showing the previous day with
+# no request made. Whenever the page is shown and its day is behind the live
+# puzzle day, it asks the server for a revalidated copy and reloads only if that
+# copy holds a newer day. If the capture has not landed yet it does nothing, and
+# looks again at most once a minute. No fetch in the fragment build: the
+# artifact host blocks it by CSP.
+LIVE_SCRIPT = """<script>
+(function () {
+  var day = document.querySelector('[data-day]').getAttribute('data-day');
+  var last = 0;
+  function liveDay() {
+    return new Date(Date.now() - 4 * 3600 * 1000).toISOString().slice(0, 10);
+  }
+  function check() {
+    if (document.visibilityState === 'hidden' || liveDay() <= day) return;
+    if (Date.now() - last < 60000) return;
+    last = Date.now();
+    fetch(location.href, {cache: 'no-cache'})
+      .then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (html) {
+        var m = html.match(/data-day="([0-9-]{10})"/);
+        if (!m || m[1] <= day) return;
+        // One reload per new day per tab, so a reload that somehow still comes
+        // back stale stops rather than loops. No storage, no reload.
+        try {
+          if (sessionStorage.getItem('krill-reloaded') === m[1]) return;
+          sessionStorage.setItem('krill-reloaded', m[1]);
+        } catch (e) { return; }
+        location.reload();
+      })
+      .catch(function () {});
+  }
+  addEventListener('pageshow', check);
+  document.addEventListener('visibilitychange', check);
+})();
+</script>"""
+
+
 def esc(s):
     return html.escape(s or '', quote=True)
 
@@ -286,9 +325,10 @@ def short(date):
     return datetime.date.fromisoformat(date).strftime('%d %b').lstrip('0')
 
 
-def page(d, nav='', archived=False):
+def page(d, nav='', archived=False, live=False):
     """One day's page. `nav` is empty for the single-file build, which has
-    nowhere to navigate to."""
+    nowhere to navigate to. `live` adds the stale-day check, for the root page
+    only - a dated URL is meant to keep showing its day."""
     date = d['date']
     pretty = datetime.date.fromisoformat(date).strftime('%d %B %Y').lstrip('0')
 
@@ -314,7 +354,7 @@ def page(d, nav='', archived=False):
                   + ' seven prompts, and what each one actually is.')
 
     return (
-        '<div class="wrap">\n<header>\n'
+        '<div class="wrap" data-day="' + esc(date) + '">\n<header>\n'
         '  <div class="eyebrow">'
         '<span class="mono">Krillion &middot; the daily dive</span>'
         '<span class="mono">' + esc(pretty) + '</span></div>\n'
@@ -331,6 +371,7 @@ def page(d, nav='', archived=False):
         'which serves the live puzzle only, so this archive starts the day it was built '
         'and cannot be backfilled. Summaries and images from Wikipedia, CC BY-SA, linked per entry.</p>\n'
         '</footer>\n</div>'
+        + ('\n' + LIVE_SCRIPT if live else '')
     )
 
 
@@ -385,7 +426,7 @@ def main(out=None, fragment=None):
         doc = wrap_doc(page(d, nav_html(dates, i), archived=(i < len(days) - 1)))
         total += write(os.path.join(site, d['date'], 'index.html'), doc)
     # The root is today's page, with the nav pointing into the archive.
-    root = page(days[-1], nav_html(dates, len(days) - 1, root=True))
+    root = page(days[-1], nav_html(dates, len(days) - 1, root=True), live=True)
     total += write(os.path.join(site, 'index.html'), wrap_doc(root))
     print('wrote %d pages (%d archived) to %s (%.1f MB)'
           % (len(days) + 1, len(days) - 1, site, total / 1048576.0))
