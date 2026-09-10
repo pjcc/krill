@@ -45,6 +45,8 @@ To update it, pass that URL as `url` when publishing. Publishing without it crea
 
 Because the data is kept rather than the HTML, a design change re-renders the whole archive on the next run.
 
+The root page, and only the root, carries `LIVE_SCRIPT`: on `pageshow` and `visibilitychange`, if its `data-day` is behind the live puzzle day (UTC now minus 4 hours) it fetches itself with `cache: 'no-cache'` and reloads only if the response holds a newer `data-day`. Otherwise it stays put silently - no banner, by the user's choice - and re-checks at most once a minute. It covers a tab left open across the roll and a visit served from the browser's 10-minute Pages cache. A `sessionStorage` flag allows one reload per new day per tab, and no storage means no reload, so it cannot loop. Dated pages never get it, and neither does `--fragment` (the artifact host blocks fetch).
+
 `fetch.py` skips the pull when `data/<date>.json` already exists, so the push and schedule triggers do not re-fetch the same day. `--force` re-pulls if a capture was interrupted.
 
 ## Output path
