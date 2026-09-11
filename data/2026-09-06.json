@@ -172,8 +172,16 @@
    "best": {
     "score": 85,
     "answers": [
-     "Timor-Leste",
-     "Tuvalu"
+     {
+      "answer": "Timor-Leste",
+      "title": "Timor-Leste",
+      "url": "https://en.wikipedia.org/wiki/Timor-Leste"
+     },
+     {
+      "answer": "Tuvalu",
+      "title": "Tuvalu",
+      "url": "https://en.wikipedia.org/wiki/Tuvalu"
+     }
     ]
    }
   }

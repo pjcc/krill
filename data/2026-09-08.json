@@ -139,7 +139,11 @@
    "best": {
     "score": 85,
     "answers": [
-     "Suriname"
+     {
+      "answer": "Suriname",
+      "title": "Suriname",
+      "url": "https://en.wikipedia.org/wiki/Suriname"
+     }
     ]
    }
   },

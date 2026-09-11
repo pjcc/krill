@@ -134,8 +134,16 @@
    "best": {
     "score": 85,
     "answers": [
-     "Fionn Whitehead",
-     "Jeremy Theobald"
+     {
+      "answer": "Fionn Whitehead",
+      "title": "Fionn Whitehead",
+      "url": "https://en.wikipedia.org/wiki/Fionn_Whitehead"
+     },
+     {
+      "answer": "Jeremy Theobald",
+      "title": "Jeremy Theobald",
+      "url": "https://en.wikipedia.org/wiki/Jeremy_Theobald"
+     }
     ]
    }
   },

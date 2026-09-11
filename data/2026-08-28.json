@@ -110,8 +110,16 @@
    "best": {
     "score": 85,
     "answers": [
-     "Fluorine",
-     "Radon"
+     {
+      "answer": "Fluorine",
+      "title": "Fluorine",
+      "url": "https://en.wikipedia.org/wiki/Fluorine"
+     },
+     {
+      "answer": "Radon",
+      "title": "Radon",
+      "url": "https://en.wikipedia.org/wiki/Radon"
+     }
     ]
    }
   },

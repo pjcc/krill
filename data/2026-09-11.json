@@ -103,7 +103,11 @@
    "best": {
     "score": 85,
     "answers": [
-     "Palau"
+     {
+      "answer": "Palau",
+      "title": "Palau",
+      "url": "https://en.wikipedia.org/wiki/Palau"
+     }
     ]
    }
   },

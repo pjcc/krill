@@ -394,11 +394,14 @@ def none_html(p):
     """A prompt where nothing scored a hundred, which a short closed list can
     do. Without this its section is a bare heading that reads as a failed
     capture. `best` comes from fetch.best_of(); a day captured without it still
-    gets the first sentence."""
+    gets the first sentence. Each best answer is only a link to its article -
+    no summary or image - and plain text when it has none."""
     note = 'No answer scored a hundred on this one.'
     best = p.get('best')
     if best:
-        names = [esc(a) for a in best['answers']]
+        names = [('<a href="' + esc(a['url']) + '" target="_blank" rel="noopener">'
+                  + esc(a['answer']) + '</a>') if a.get('url') else esc(a['answer'])
+                 for a in best['answers']]
         listed = names[0] if len(names) == 1 else ', '.join(names[:-1]) + ' and ' + names[-1]
         note += (' The best ' + ('was ' if len(names) == 1 else 'were ')
                  + listed + ', at ' + str(best['score']) + '.')

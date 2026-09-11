@@ -14,10 +14,26 @@
    "best": {
     "score": 85,
     "answers": [
-     "Mali",
-     "Niue",
-     "Oman",
-     "Togo"
+     {
+      "answer": "Mali",
+      "title": "Mali",
+      "url": "https://en.wikipedia.org/wiki/Mali"
+     },
+     {
+      "answer": "Niue",
+      "title": "Niue",
+      "url": "https://en.wikipedia.org/wiki/Niue"
+     },
+     {
+      "answer": "Oman",
+      "title": "Oman",
+      "url": "https://en.wikipedia.org/wiki/Oman"
+     },
+     {
+      "answer": "Togo",
+      "title": "Togo",
+      "url": "https://en.wikipedia.org/wiki/Togo"
+     }
     ]
    }
   },

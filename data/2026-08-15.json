@@ -86,7 +86,11 @@
    "best": {
     "score": 85,
     "answers": [
-     "Raya"
+     {
+      "answer": "Raya",
+      "title": "Raya (Disney character)",
+      "url": "https://en.wikipedia.org/wiki/Raya_(Disney_character)"
+     }
     ]
    }
   },

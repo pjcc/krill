@@ -63,7 +63,7 @@ Each page carries a previous / today / next navigation across whatever days have
 
 Tiers are krillion 100, deepcut 85, rare 60, schooler 30, plankton 10. Deepcut is the catch-all bulk tier, so almost any non-obvious answer scores 85; the list worth knowing is the handful of plankton answers to avoid.
 
-Some prompts have no hundred-point answer at all - short closed lists like "a country whose name starts with P", which had ten accepted answers topped by Palau at 85. The data file then records the top-scoring answers as "best", and the page says so under the heading instead of leaving the section empty.
+Some prompts have no hundred-point answer at all - short closed lists like "a country whose name starts with P", which had ten accepted answers topped by Palau at 85. The data file then records the top-scoring answers as "best", and the page says so under the heading instead of leaving the section empty. Each of those answers links to its Wikipedia article - just the link, with no summary or image.
 
 
 VISITOR COUNTER

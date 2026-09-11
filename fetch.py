@@ -207,19 +207,34 @@ def enrich(reveal, date):
             'items': items,
         }
         if not items:
-            entry['best'] = best_of(p['answers'])
+            entry['best'] = best_of(p['answers'], hint)
         out['prompts'].append(entry)
     return out
 
-def best_of(answers):
+def best_of(answers, hint):
     """The top-scoring answers, kept for a prompt where nothing scored a
     hundred. Short closed lists do this - 'a country whose name starts with P'
     has ten accepted answers, the best at 85 - and without it the section is a
-    bare heading that reads as a failed capture."""
+    bare heading that reads as a failed capture. Each is linked to its article
+    but gets no summary or image: they are a footnote to an empty section, not
+    entries."""
     if not answers:
         return None
     top = max(a['score'] for a in answers)
-    return {'score': top, 'answers': [a['answer'] for a in answers if a['score'] == top]}
+    return {'score': top,
+            'answers': [link_item(a['answer'], hint) for a in answers if a['score'] == top]}
+
+def link_item(answer, hint):
+    """An answer and its Wikipedia link, with no summary or thumbnail. A prefix
+    fallback gets no link: with no 'closest article' tag beside it, a related
+    article would pass for the answer's own."""
+    s, approx = resolve(answer, hint)
+    ok = bool(s) and not approx
+    item = {'answer': answer,
+            'title': s['title'] if ok else None,
+            'url': s['content_urls']['desktop']['page'] if ok else None}
+    print(f"  {answer} -> {item['title']}{' (approx, unlinked)' if s and approx else ''}", flush=True)
+    return item
 
 def write_day(out):
     """Written the same way as the pages: a half-written capture cannot be

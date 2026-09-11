@@ -1,6 +1,7 @@
-"""Re-resolve every captured hundred-pointer that has an entry in overrides.json,
-in place, then rebuild. Only those items change - answers, quips, totals and
-tiers are untouched - so it is safe on days the free endpoint no longer serves.
+"""Re-resolve every captured hundred-pointer, and every linked best answer on a
+prompt with no hundred-pointer, that has an entry in overrides.json, in place,
+then rebuild. Only those items change - answers, quips, totals and tiers are
+untouched - so it is safe on days the free endpoint no longer serves.
 
     python reenrich.py
 """
@@ -23,6 +24,13 @@ def main():
                 new = fetch.enrich_item(it['answer'], it.get('quip', ''), fetch.hint_for(p['text']))
                 if new != it:
                     p['items'][n] = new
+                    touched = True
+            for n, a in enumerate((p.get('best') or {}).get('answers', [])):
+                if a['answer'] not in fetch.OVERRIDES:
+                    continue
+                new = fetch.link_item(a['answer'], fetch.hint_for(p['text']))
+                if new != a:
+                    p['best']['answers'][n] = new
                     touched = True
         if touched:
             fetch.write_day(day)

@@ -14,9 +14,21 @@
    "best": {
     "score": 85,
     "answers": [
-     "Lesotho",
-     "Republic of the Congo",
-     "San Marino"
+     {
+      "answer": "Lesotho",
+      "title": "Lesotho",
+      "url": "https://en.wikipedia.org/wiki/Lesotho"
+     },
+     {
+      "answer": "Republic of the Congo",
+      "title": "Republic of the Congo",
+      "url": "https://en.wikipedia.org/wiki/Republic_of_the_Congo"
+     },
+     {
+      "answer": "San Marino",
+      "title": "San Marino",
+      "url": "https://en.wikipedia.org/wiki/San_Marino"
+     }
     ]
    }
   },
