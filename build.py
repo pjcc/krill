@@ -164,6 +164,14 @@ h3 a:hover{color:var(--krill);text-decoration-color:var(--krill)}
   font-style:italic;font-size:16.5px;color:var(--foam);
 }
 .none{margin:20px 0 0;font-style:italic;font-size:17px;color:var(--mist)}
+/* Best answers are links like the hundred-pointers' names: white on an orange
+   underline, not the default orange text, which read as a lesser link. */
+.none a{
+  color:var(--foam);
+  text-decoration-color:rgba(255,122,82,.45);
+  text-underline-offset:3px;
+}
+.none a:hover{color:var(--krill);text-decoration-color:var(--krill)}
 a{color:var(--krill);text-decoration:underline;text-decoration-color:rgba(255,122,82,.4);
   text-decoration-thickness:1px;text-underline-offset:2px}
 a:hover{text-decoration-color:var(--krill)}
