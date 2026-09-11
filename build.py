@@ -273,6 +273,91 @@ HIT_SCRIPT = ("<script>navigator.sendBeacon && navigator.sendBeacon('"
               + HIT_URL + "')</script>")
 
 
+# The visitor stats page at /stats/. Pages serves it with the rest of the site
+# and the browser fills the table from the counter Worker, which lets
+# https://piers.qa read its JSON - so the page lives on piers.qa without
+# Cloudflare proxying the whole domain. No beacon: looking at the counts should
+# not add to them. Opened from a local file it shows 'Could not load the
+# counts', because a file:// origin is not allowed to read them.
+STATS_JSON = 'https://krill-hits.piers.qa/stats.json'
+
+STATS_STYLE = """<style>
+.scroll{overflow-x:auto;margin-top:18px}
+.stats{border-collapse:collapse;width:100%}
+.stats th,.stats td{text-align:left;padding:12px 18px 12px 0;border-bottom:1px solid var(--line-soft);vertical-align:top;white-space:nowrap}
+.stats th{font-family:"IBM Plex Mono",monospace;font-weight:400;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--dimmer);border-bottom-color:var(--line)}
+.stats td{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:14px}
+.stats th:nth-child(2),.stats th:nth-child(3),.stats td:nth-child(2),.stats td:nth-child(3){text-align:right}
+.stats td:last-child{white-space:normal;color:var(--mist)}
+#s-status{margin-top:18px}
+</style>"""
+
+STATS_BODY = """<div class="wrap">
+<header>
+  <div class="eyebrow"><span class="mono">Krillion &middot; the daily dive</span><a class="mono" href="../">today&rsquo;s answers &rarr;</a></div>
+  <h1>Krill <em>visitors</em></h1>
+  <p class="standfirst">Per UTC day. A visitor is one IPv4 address, or one IPv6 /64 block, since devices rotate IPv6 addresses within it. Hits are page loads.</p>
+  <div class="gauge"><div><b id="s-today-u">&ndash;</b><span class="mono">visitors today</span></div><div><b id="s-today-h">&ndash;</b><span class="mono">hits today</span></div><div><b id="s-all">&ndash;</b><span class="mono">hits all time</span></div></div>
+</header>
+<section>
+  <div class="scroll"><table class="stats">
+    <thead><tr><th>Day</th><th>Visitors</th><th>Hits</th><th>Hits per visitor</th></tr></thead>
+    <tbody id="s-rows"></tbody>
+  </table></div>
+  <p class="mono" id="s-status">Loading counts</p>
+</section>
+<footer>
+  <p>Counted from a beacon on each page. No IP addresses are stored, only a salted hash that changes every day, so hits per visitor lists counts with no addresses attached. Raw data: <a href="https://krill-hits.piers.qa/stats.json"><code>stats.json</code></a></p>
+</footer>
+</div>"""
+
+STATS_SCRIPT = """<script>
+(function () {
+  var SHOWN = 20;   // per-visitor counts listed for a day before '+N more'
+  var status = document.getElementById('s-status');
+  function set(id, n) { document.getElementById(id).textContent = n.toLocaleString('en-GB'); }
+  fetch('""" + STATS_JSON + """', {cache: 'no-store'})
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (days) {
+      var rows = document.getElementById('s-rows');
+      var today = new Date().toISOString().slice(0, 10);
+      var all = 0, t = null;
+      days.forEach(function (d) {
+        all += d.hits;
+        if (d.day === today) t = d;
+        var more = d.per_visitor.length > SHOWN ? ' +' + (d.per_visitor.length - SHOWN) + ' more' : '';
+        var tr = document.createElement('tr');
+        [d.day, d.uniques.toLocaleString('en-GB'), d.hits.toLocaleString('en-GB'),
+         d.per_visitor.slice(0, SHOWN).join(', ') + more].forEach(function (v) {
+          var td = document.createElement('td');
+          td.textContent = v;   // text, never markup, whatever comes back
+          tr.appendChild(td);
+        });
+        rows.appendChild(tr);
+      });
+      set('s-today-u', t ? t.uniques : 0);
+      set('s-today-h', t ? t.hits : 0);
+      set('s-all', all);
+      if (days.length) status.hidden = true;
+      else status.textContent = 'No visits yet';
+    })
+    .catch(function () { status.textContent = 'Could not load the counts'; });
+})();
+</script>"""
+
+
+def stats_doc():
+    """The /stats/ page: the site's shell and styling around a table the
+    browser fills from the counter. It swaps the answers description for
+    noindex, which would describe the wrong page."""
+    desc, title = '<meta name="description"', '<title>The Krillion Dive</title>'
+    assert desc in DOC_OPEN and title in HEAD
+    doc = (DOC_OPEN.split(desc)[0] + '<meta name="robots" content="noindex">\n'
+           + HEAD.replace(title, '<title>Krill visitors</title>') + STATS_STYLE
+           + DOC_MID + STATS_BODY + '\n' + STATS_SCRIPT + DOC_CLOSE)
+    return doc.encode('ascii', 'xmlcharrefreplace').decode('ascii')
+
+
 def esc(s):
     return html.escape(s or '', quote=True)
 
@@ -457,7 +542,8 @@ def main(out=None, fragment=None):
     # The root is today's page, with the nav pointing into the archive.
     root = page(days[-1], nav_html(dates, len(days) - 1, root=True), live=True)
     total += write(os.path.join(site, 'index.html'), wrap_doc(root))
-    print('wrote %d pages (%d archived) to %s (%.1f MB)'
+    total += write(os.path.join(site, 'stats', 'index.html'), stats_doc())
+    print('wrote %d pages (%d archived) plus stats/ to %s (%.1f MB)'
           % (len(days) + 1, len(days) - 1, site, total / 1048576.0))
 
 

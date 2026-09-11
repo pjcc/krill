@@ -1,7 +1,8 @@
 // Visitors per day for piers.qa/krill. Every full page sends a beacon to /hit,
 // and the Worker keeps one row per visitor per UTC day, counting that visitor's
-// hits. /stats shows unique visitors, total hits and hits per visitor for each
-// day as a table; /stats.json is the same data.
+// hits. /stats.json gives unique visitors, total hits and hits per visitor for
+// each day; the page that shows them is https://piers.qa/krill/stats/, built
+// by build.py and served by GitHub Pages with the rest of the site.
 //
 // Raw IPs are never stored, only a SHA-256 of date + visitor key + a secret
 // salt. The date in the hash means the same visitor on two days cannot be
@@ -11,9 +12,7 @@
 // addresses.
 
 const ORIGIN = 'https://piers.qa';
-// Per-visitor counts listed for a day on /stats before the rest collapse into
-// '+N more'. The JSON carries every one.
-const SHOWN = 20;
+const STATS_PAGE = 'https://piers.qa/krill/stats/';
 
 async function sha256(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -50,48 +49,6 @@ async function stats(env) {
   return days;
 }
 
-// Every value interpolated here is a count or a date the Worker wrote itself,
-// so nothing needs escaping.
-function page(days) {
-  const rows = days.map(d => {
-    const more = d.per_visitor.length > SHOWN ? ' +' + (d.per_visitor.length - SHOWN) + ' more' : '';
-    return '<tr><td>' + d.day + '</td><td>' + d.uniques + '</td><td>' + d.hits + '</td><td>'
-      + d.per_visitor.slice(0, SHOWN).join(', ') + more + '</td></tr>';
-  }).join('') || '<tr><td colspan="4">No visits yet</td></tr>';
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Krill visitors</title>
-<style>
-body{margin:0;padding-block:32px;padding-inline:16px;background:#060d16;color:#e9eff6;font:15px/1.5 ui-monospace,Consolas,monospace}
-main{max-width:760px;margin:0 auto}
-h1{font-size:18px;margin:0 0 6px}
-p{color:#92a6bc;margin:0 0 24px}
-a{color:#ff7a52}
-.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%}
-th,td{text-align:left;padding:8px 16px 8px 0;border-bottom:1px solid #1b2d42;white-space:nowrap;vertical-align:top}
-th{color:#92a6bc;font-weight:400}
-th:nth-child(2),th:nth-child(3),td:nth-child(2),td:nth-child(3){text-align:right}
-td:last-child{white-space:normal;color:#92a6bc}
-</style>
-</head>
-<body>
-<main>
-<h1>piers.qa/krill visitors</h1>
-<p>Per UTC day. A visitor is one IPv4 address, or one IPv6 /64 block, since devices rotate IPv6 addresses within it. Hits are page loads, and hits per visitor lists each visitor's count that day, busiest first. <a href="/stats.json">JSON</a></p>
-<div class="scroll"><table>
-<thead><tr><th>Day</th><th>Unique</th><th>Hits</th><th>Hits per visitor</th></tr></thead>
-<tbody>${rows}</tbody>
-</table></div>
-</main>
-</body>
-</html>`;
-}
-
 export default {
   async fetch(req, env) {
     const { pathname } = new URL(req.url);
@@ -112,12 +69,17 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    if (req.method === 'GET' && (pathname === '/stats' || pathname === '/stats.json')) {
-      const days = await stats(env);
-      const headers = { 'Cache-Control': 'no-store' };
-      if (pathname === '/stats.json') return Response.json(days, { headers });
-      return new Response(page(days), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } });
+    if (pathname === '/stats.json' && req.method === 'GET') {
+      // The stats page on piers.qa reads this from the browser, so that origin
+      // needs CORS. The counts are public anyway; the header only decides which
+      // pages may read them in script.
+      return Response.json(await stats(env), {
+        headers: { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': ORIGIN, 'Vary': 'Origin' },
+      });
     }
+
+    // The table used to be served here; it moved to the site.
+    if (pathname === '/stats') return Response.redirect(STATS_PAGE, 301);
 
     return new Response('Not found', { status: 404 });
   },
