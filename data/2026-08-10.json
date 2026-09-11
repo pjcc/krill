@@ -130,7 +130,14 @@
     "schooler": 4,
     "plankton": 3
    },
-   "items": []
+   "items": [],
+   "best": {
+    "score": 85,
+    "answers": [
+     "Fionn Whitehead",
+     "Jeremy Theobald"
+    ]
+   }
   },
   {
    "text": "Name a movie James Cameron directed, wrote, or produced",

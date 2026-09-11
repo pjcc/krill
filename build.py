@@ -163,6 +163,7 @@ h3 a:hover{color:var(--krill);text-decoration-color:var(--krill)}
   border-left:2px solid var(--line);
   font-style:italic;font-size:16.5px;color:var(--foam);
 }
+.none{margin:20px 0 0;font-style:italic;font-size:17px;color:var(--mist)}
 a{color:var(--krill);text-decoration:underline;text-decoration-color:rgba(255,122,82,.4);
   text-decoration-thickness:1px;text-underline-offset:2px}
 a:hover{text-decoration-color:var(--krill)}
@@ -304,6 +305,21 @@ def entry_html(it):
     return '<div class="entry">' + plate + '<div>' + ''.join(bits) + '</div></div>'
 
 
+def none_html(p):
+    """A prompt where nothing scored a hundred, which a short closed list can
+    do. Without this its section is a bare heading that reads as a failed
+    capture. `best` comes from fetch.best_of(); a day captured without it still
+    gets the first sentence."""
+    note = 'No answer scored a hundred on this one.'
+    best = p.get('best')
+    if best:
+        names = [esc(a) for a in best['answers']]
+        listed = names[0] if len(names) == 1 else ', '.join(names[:-1]) + ' and ' + names[-1]
+        note += (' The best ' + ('was ' if len(names) == 1 else 'were ')
+                 + listed + ', at ' + str(best['score']) + '.')
+    return '<p class="none">' + note + '</p>'
+
+
 def nav_html(dates, i, root=False):
     """Previous / today / next across the archive. The reveal endpoint only ever
     serves the live puzzle, so the archive grows forward from the day it started
@@ -347,7 +363,7 @@ def page(d, nav='', archived=False, live=False):
 
     secs = []
     for i, p in enumerate(d['prompts'], 1):
-        entries = ''.join(entry_html(it) for it in p['items'])
+        entries = ''.join(entry_html(it) for it in p['items']) or none_html(p)
         secs.append(
             '<section><div class="phead">'
             + '<span class="pnum">' + '%02d' % i + '</span>'

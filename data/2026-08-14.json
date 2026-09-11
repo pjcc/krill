@@ -10,7 +10,16 @@
     "schooler": 2,
     "plankton": 2
    },
-   "items": []
+   "items": [],
+   "best": {
+    "score": 85,
+    "answers": [
+     "Mali",
+     "Niue",
+     "Oman",
+     "Togo"
+    ]
+   }
   },
   {
    "text": "Name a type of turtle or tortoise",

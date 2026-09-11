@@ -10,7 +10,15 @@
     "schooler": 3,
     "plankton": 1
    },
-   "items": []
+   "items": [],
+   "best": {
+    "score": 85,
+    "answers": [
+     "Lesotho",
+     "Republic of the Congo",
+     "San Marino"
+    ]
+   }
   },
   {
    "text": "Name a sea",

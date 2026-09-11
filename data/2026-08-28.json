@@ -106,7 +106,14 @@
     "schooler": 4,
     "plankton": 2
    },
-   "items": []
+   "items": [],
+   "best": {
+    "score": 85,
+    "answers": [
+     "Fluorine",
+     "Radon"
+    ]
+   }
   },
   {
    "text": "Name a Drake song",

@@ -200,13 +200,26 @@ def enrich(reveal, date):
         tiers = {}
         for a in p['answers']:
             tiers[a['tier']] = tiers.get(a['tier'], 0) + 1
-        out['prompts'].append({
+        entry = {
             'text': p['text'],
             'total': len(p['answers']),
             'tiers': tiers,
             'items': items,
-        })
+        }
+        if not items:
+            entry['best'] = best_of(p['answers'])
+        out['prompts'].append(entry)
     return out
+
+def best_of(answers):
+    """The top-scoring answers, kept for a prompt where nothing scored a
+    hundred. Short closed lists do this - 'a country whose name starts with P'
+    has ten accepted answers, the best at 85 - and without it the section is a
+    bare heading that reads as a failed capture."""
+    if not answers:
+        return None
+    top = max(a['score'] for a in answers)
+    return {'score': top, 'answers': [a['answer'] for a in answers if a['score'] == top]}
 
 def write_day(out):
     """Written the same way as the pages: a half-written capture cannot be

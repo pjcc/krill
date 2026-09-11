@@ -168,7 +168,14 @@
     "schooler": 4,
     "plankton": 2
    },
-   "items": []
+   "items": [],
+   "best": {
+    "score": 85,
+    "answers": [
+     "Timor-Leste",
+     "Tuvalu"
+    ]
+   }
   }
  ],
  "source": "krillion-game.com + krilliongame.net quips"

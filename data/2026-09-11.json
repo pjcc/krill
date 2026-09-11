@@ -99,7 +99,13 @@
     "schooler": 3,
     "plankton": 3
    },
-   "items": []
+   "items": [],
+   "best": {
+    "score": 85,
+    "answers": [
+     "Palau"
+    ]
+   }
   },
   {
    "text": "Name a part of the human brain",

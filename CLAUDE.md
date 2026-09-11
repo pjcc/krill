@@ -29,6 +29,8 @@ Past days are **not free, but not gone**: Krillion serves every day from a paid 
 
 Tiers are krillion 100, deepcut 85, rare 60, schooler 30, plankton 10. Deepcut is the catch-all bulk tier holding roughly 90% of answers, so the only list worth knowing is the handful of plankton answers to avoid.
 
+Short closed lists can have **no hundred-pointer at all** - 8 of the first 58 days had such a prompt, e.g. 'a country whose name starts with P' on 2026-09-11, ten answers topped by Palau at 85. That is not a failed capture. `fetch.enrich()` stores the top-scoring answers as `best` on any prompt with no items, and `build.none_html()` renders 'No answer scored a hundred on this one. The best was ...' in place of the entries. The 8 existing prompts were filled from `.backfill/` and the live reveal on 2026-09-11.
+
 ## Constraints - do not rediscover these
 
 - **krillion.io sends no CORS headers**, so a browser page cannot fetch the answers directly. That is why the page is generated rather than live. Artifacts additionally block all runtime `fetch` by CSP and block external images, hence thumbnails as data URIs

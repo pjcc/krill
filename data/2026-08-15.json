@@ -82,7 +82,13 @@
     "schooler": 6,
     "plankton": 4
    },
-   "items": []
+   "items": [],
+   "best": {
+    "score": 85,
+    "answers": [
+     "Raya"
+    ]
+   }
   },
   {
    "text": "Name a famous physicist",
