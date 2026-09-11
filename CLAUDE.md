@@ -107,10 +107,11 @@ Writes are throttled to one every 5 s rather than one per response, with a force
 
 ## Visitor counter
 
-Unique visitors per IP per UTC day, read at https://krill-hits.piers.qa/stats. GitHub Pages has no access logs, and `piers.qa` is **DNS-only** on Cloudflare (A records point at GitHub), so Cloudflare's zone analytics never see the traffic either. Proxying the zone to get them would cover all of `piers.qa`, not just `/krill`, so the counter is a separate Worker instead.
+Unique visitors (by IP), total hits and hits per visitor per UTC day, read at https://krill-hits.piers.qa/stats (HTML table) or `/stats.json`. GitHub Pages has no access logs, and `piers.qa` is **DNS-only** on Cloudflare (A records point at GitHub), so Cloudflare's zone analytics never see the traffic either. Proxying the zone to get them would cover all of `piers.qa`, not just `/krill`, so the counter is a separate Worker instead.
 
 - `build.py` appends `HIT_SCRIPT`, a `sendBeacon` POST to `HIT_URL`, to every full page in `wrap_doc`. Not in `--fragment`: the artifact host blocks it by CSP
-- `counter/src/index.js` rejects any `Origin` but `https://piers.qa` (which also drops local `file://` previews), then `INSERT OR IGNORE`s `sha256(day|ip|SALT)` into D1 keyed on `(day, visitor)`. Deduplication is the primary key, so reloads - including `LIVE_SCRIPT`'s - never double count
+- `counter/src/index.js` rejects any `Origin` but `https://piers.qa` (which also drops local `file://` previews), then upserts `sha256(day|ip|SALT)` into D1 keyed on `(day, visitor)`: the first hit of the day adds a row, later ones bump its `hits`. Uniques are rows, total hits are `SUM(hits)`, so reloads - including `LIVE_SCRIPT`'s - add hits but never a second unique
+- `hits` was added after the table went live, so `schema.sql` carries the one-off `ALTER TABLE` for a database created before 2026-09-11. Run a column change **before** deploying the Worker that uses it - the old Worker's insert keeps working against the new column's default
 - **No raw IPs are stored.** The date is inside the hash so visitors cannot be linked across days, and a missing `SALT` returns 500 rather than hashing unsalted, because an unsalted IPv4 hash is reversible by brute force
 - Served on the custom domain `krill-hits.piers.qa` with `workers_dev = false`, so the beacon URL does not depend on the account's workers.dev subdomain
 - Deploy steps and local testing are in `README.txt` under VISITOR COUNTER. `counter/.dev.vars` holds a local-only SALT and is untracked

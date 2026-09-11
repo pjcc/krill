@@ -68,9 +68,9 @@ Some prompts have no hundred-point answer at all - short closed lists like "a co
 
 VISITOR COUNTER
 
-Daily unique visitors, counted by IP, at https://krill-hits.piers.qa/stats (JSON, newest day first). GitHub Pages keeps no access logs and piers.qa is DNS-only on Cloudflare, so neither sees the traffic - hence a separate Worker.
+Unique visitors (by IP), total hits and hits per visitor, per day, at https://krill-hits.piers.qa/stats - a table, newest day first, with the same data at /stats.json. GitHub Pages keeps no access logs and piers.qa is DNS-only on Cloudflare, so neither sees the traffic - hence a separate Worker.
 
-Every full page ends with a sendBeacon POST to https://krill-hits.piers.qa/hit. The Worker in counter/ rejects anything whose Origin is not https://piers.qa, hashes date + IP + a secret salt, and inserts it into a D1 table keyed on (day, visitor) with OR IGNORE - so reloads, the root page's stale-day reload, and repeat visits never add a second row. Days are UTC calendar days. Raw IPs are never stored, and the date in the hash means one visitor cannot be tracked across days. The artifact (--fragment) build carries no beacon, since its host blocks it by CSP.
+Every full page ends with a sendBeacon POST to https://krill-hits.piers.qa/hit. The Worker in counter/ rejects anything whose Origin is not https://piers.qa, hashes date + IP + a secret salt, and upserts it into a D1 table keyed on (day, visitor): the first hit of the day adds a row, every later one from the same IP bumps that row's hits. A hit is a page load that runs the script - archive navigation and the root page's stale-day reload count, a back-button return from the browser's page cache does not. Days are UTC calendar days. Raw IPs are never stored, and the date in the hash means one visitor cannot be tracked across days, so hits per visitor is a list of counts with no addresses attached. The artifact (--fragment) build carries no beacon, since its host blocks it by CSP.
 
 It undercounts visitors whose ad blocker drops the beacon or who have JavaScript off, and counts one household behind a shared IP once. Crawlers that do not run JavaScript never register.
 
