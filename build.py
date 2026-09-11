@@ -281,7 +281,7 @@ def entry_html(it):
         plate = ('<div class="plate"><img src="' + esc(it['image']) + '" alt="'
                  + esc(it.get('title') or it['answer']) + '"></div>')
     else:
-        plate = '<div class="plate empty"><span class="mono">no plate</span></div>'
+        plate = '<div class="plate empty"><span class="mono">no image</span></div>'
 
     # the answer itself is the link out; the tag only appears when the article
     # we found is a near miss rather than the answer
