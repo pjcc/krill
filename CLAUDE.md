@@ -1,13 +1,13 @@
 # Krillion Daily
 
-Scrapes the daily answer key from the game at https://krillion.io and renders the hundred-point answers as a single self-contained page. Built 9 Sep 2026. Not a git repo.
+Scrapes the daily answer key from the game at https://krillion.io and renders the hundred-point answers as a static site, a page per day, at https://piers.qa/krill/. Built 9 Sep 2026. Repo `pjcc/krill` on GitHub, deployed by Actions.
 
 `README.txt` in this folder is the fuller writeup - read it before changing anything.
 
 ## Layout
 
-- `fetch.py` - pulls the date and answers, resolves each answer to a Wikipedia article, embeds the thumbnail as a data URI, writes `data.json`, then calls `build.py`
-- `build.py` - renders `data.json` into `index.html`; owns all styling
+- `fetch.py` - pulls the date and answers, resolves each answer to a Wikipedia article, embeds the thumbnail as a data URI, writes `data/<date>.json`, then calls `build.py`
+- `build.py` - renders every `data/<date>.json` into `_site/` - a page per day, the latest again at the root, and `stats/`; owns all styling
 - `backfill.py` - recovers days before the daily capture began from the Wayback Machine and public mirrors, enriched through the same `fetch.enrich()` as a live day
 - `overrides.json` - hand-checked Wikipedia titles for answers the search resolves wrongly; `null` means show no article. `fetch.resolve()` consults it before searching
 - `reenrich.py` - re-resolves every captured answer listed in `overrides.json`, in place, then rebuilds. Run it after adding an override
@@ -38,12 +38,6 @@ Short closed lists can have **no hundred-pointer at all** - 8 of the first 58 da
 - **Wikipedia's `action=query` search API returns 429 unconditionally from this network**, regardless of User-Agent. Resolution goes through `rest.php/v1/search/title`, with summaries from `api/rest_v1/page/summary`. Requests are throttled and cached
 - Output is written as **pure ASCII with entity escapes**, because the extracts are full of non-breaking spaces and accents and the page renders in hosts that may not declare a charset
 - The design is **deliberately dark-only** and paints its own background rather than inheriting the host theme
-
-## Publishing
-
-The page is published at https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9-0ae3c0aa653c
-
-To update it, pass that URL as `url` when publishing. Publishing without it creates a second, separate artifact.
 
 ## Archive and navigation
 
@@ -83,7 +77,7 @@ Recovered data files carry a `source` field. The pages deliberately do not show 
 python fetch.py --out /var/www/piers.qa/krill
 ```
 
-With `--fragment` it is a single **file** instead, holding only the latest day with no nav - for a host that supplies its own document shell and cannot follow links to sibling pages. That is how the artifact copy is built.
+With `--fragment` it is a single **file** instead, holding only the latest day with no nav - for a host that supplies its own document shell and cannot follow links to sibling pages. That is how the artifact copy was built, before it was retired (see Publishing).
 
 Pages are written to a `.tmp` and renamed, so a web server never serves one half-written. `build.py` emits a complete document (doctype, charset, viewport); without the viewport meta a phone lays the page out at 980px virtual width.
 
@@ -95,7 +89,7 @@ The site is public at **https://piers.qa/krill/**, from the `pjcc/krill` repo, d
 
 The workflow holds `contents: write` in order to commit each day's capture back to `data/`.
 
-There is also an artifact copy at https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9-0ae3c0aa653c - build it with `--fragment` and pass that URL as `url` when publishing.
+An artifact copy at https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9-0ae3c0aa653c was **retired on 2026-09-11** by the user's choice: nothing refreshed it, so it had drifted days behind the live site. It still shows 9 Sep until deleted from https://claude.ai/code/artifacts. Do not republish it; `--fragment` stays for a single-file build.
 
 ## Cache
 

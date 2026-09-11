@@ -2,9 +2,6 @@
 # a day of inline base64, so committing it daily would bloat history fast.
 index.html
 _site/
-# Superseded by data/<date>.json - that archive IS tracked, and is the only
-# record a given day existed, since /api/reveal cannot be asked for past dates.
-data.json
 
 # Raw HTTP response cache, including base64 image bodies. Local only: it absorbs
 # whatever gets fetched, so it is never something to publish.
@@ -16,9 +13,6 @@ reference/
 
 __pycache__/
 *.pyc
-
-# Fragment build for the artifact host, which supplies its own document shell.
-.artifact.html
 
 # Parsed answer keys from backfill.py's mirror pulls, so a rerun after a
 # Wikipedia 429 does not fetch the mirrors again. data/ holds the result.

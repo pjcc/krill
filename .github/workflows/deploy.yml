@@ -37,10 +37,10 @@ jobs:
       # triggered, which can predate a capture pushed by an earlier run still
       # ahead of it in the concurrency queue - it would then re-capture and fail
       # to push. The branch tip at run time is always the latest capture.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -99,10 +99,10 @@ jobs:
       # Most scheduled runs find the day already captured, and redeploying an
       # unchanged site dozens of times a day is only noise. Pushes and manual
       # runs always deploy, so a code change or a failed deploy can be pushed out.
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         if: github.event_name != 'schedule' || steps.capture.outputs.new == 'true'
         with:
           path: _site
       - id: deploy
         if: github.event_name != 'schedule' || steps.capture.outputs.new == 'true'
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

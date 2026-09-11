@@ -1,4 +1,5 @@
-"""Render data.json into a self-contained single page."""
+"""Render every captured day in data/ into the static site: a page per day,
+the latest again at the root, and the visitor stats page."""
 import json, os, sys, html, datetime
 
 DIR = os.path.dirname(os.path.abspath(__file__))

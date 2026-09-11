@@ -1,8 +1,8 @@
 KRILLION DAILY
 
-Generates a single self-contained page showing the hundred-point ("krillion" tier) answers to today's seven Krillion prompts, each with a Wikipedia summary, image and link.
+Generates a static site, one page per day, showing the hundred-point ("krillion" tier) answers to today's seven Krillion prompts, each with a Wikipedia summary, image and link.
 
-Published at https://piers.qa/krill/ - rebuilt and redeployed daily by GitHub Actions from the pjcc/krill repo. There is also an artifact copy at https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9-0ae3c0aa653c.
+Published at https://piers.qa/krill/ - rebuilt and redeployed daily by GitHub Actions from the pjcc/krill repo.
 
 
 RUN IT
@@ -15,16 +15,16 @@ That captures today into data/<date>.json and rebuilds the whole site into _site
 
 python C:\dev\krillion-daily\fetch.py --out D:\www\krill
 
-Missing directories are created, and each page is written to a .tmp and renamed, so a web server never serves one half-written. With --fragment, --out is a single FILE holding only the latest day and no navigation - that is how the artifact copy is built.
+Missing directories are created, and each page is written to a .tmp and renamed, so a web server never serves one half-written. With --fragment, --out is a single FILE holding only the latest day and no navigation - for a host that supplies its own document shell. It built a Claude artifact copy, retired on 2026-09-11 because nothing kept it current.
 
 
 FILES
 
-fetch.py - pulls the date from krillion.io/api/today, the answers from /api/reveal, resolves each answer to a Wikipedia article, embeds the thumbnail as a data URI, writes data.json, then calls build.py
+fetch.py - pulls the date from krillion.io/api/today, the answers from /api/reveal, resolves each answer to a Wikipedia article, embeds the thumbnail as a data URI, writes data/<date>.json, then calls build.py
 backfill.py - recovers days from before the daily capture began (see BACKFILL below) and enriches them with the same code as fetch.py, then rebuilds
 overrides.json - hand-checked Wikipedia titles for answers the search gets wrong; null means show no article rather than the wrong one
 reenrich.py - re-resolves every captured answer listed in overrides.json, in place, then rebuilds
-build.py - renders data.json into index.html; owns all the styling
+build.py - renders every data/<date>.json into _site/, plus the stats page; owns all the styling
 _site/ - the generated site: index.html is the latest day, <date>/index.html is each archived day. Self-contained at roughly 441 KB per page (images are inline data URIs)
 data/<date>.json - one enriched capture per day. TRACKED IN GIT, not derived: see below
 cache.json - every HTTP response, keyed by URL, with a last-used timestamp; delete to force a fully fresh pull
