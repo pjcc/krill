@@ -48,7 +48,7 @@ Past days are not gone, only not free. Krillion serves every day from a paid arc
 2. krillion-game.com/archive/<date> - every answer with its score and prompt. Checked against our own 9 Sep capture: all 4,772 answers and every score identical. No quips
 3. krilliongame.net/archive/<date>/ - quips, which it carries from roughly early September, plus any prompt krillion-game.com is missing (2026-07-30 lacks one) or has cut short (five days list a fraction of the answers). A cut-short prompt keeps krillion-game.com's answers and scores and adds only what it lacks, because krilliongame.net's mid-tier scores drift from the official ones. Prompts reworded during the day are paired by position when their answer lists overlap
 
-krilliongame.com and krillion.fun also mirror recent days but disallow AI crawlers in robots.txt, so they are not used. Recovered days carry a "source" field in their data file; the pages do not show it, and the footer says once that earlier days came from mirrors. Days before about September have no quips.
+krilliongame.com and krillion.fun also mirror recent days but disallow AI crawlers in robots.txt, so they are not used. Recovered days carry a "source" field in their data file; the pages do not show it. Days before about September have no quips.
 
 python C:\dev\krillion-daily\backfill.py              every missing day since day one
 python C:\dev\krillion-daily\backfill.py 2026-08-03   just that day

@@ -67,7 +67,7 @@ Prompts get **reworded during the day** (2026-08-31: 'culinarily and technically
 
 **krilliongame.com and krillion.fun are off-limits**: their robots.txt disallows ClaudeBot and other AI crawlers.
 
-Recovered data files carry a `source` field. The pages deliberately do not show it per day - the footer says once that earlier days came from mirrors, by the user's choice. Parsed answer keys are cached in `.backfill/` (untracked) so a rerun after a Wikipedia 429 skips the mirrors; the response cache is pruned after every day to stay inside its cap.
+Recovered data files carry a `source` field. The pages deliberately do not show it, per day or in the footer, by the user's choice - the footer's line about mirrors was removed on 2026-09-11. Parsed answer keys are cached in `.backfill/` (untracked) so a rerun after a Wikipedia 429 skips the mirrors; the response cache is pruned after every day to stay inside its cap.
 
 `HINTS` in `fetch.py` only covers the 9 Sep prompts, so other days resolve with no search hint, and the title search misfires on short or obscure answers: 'Oca' found Alexandria Ocasio-Cortez, 'Enganche' found Enhanced interrogation techniques, 'The Maschinenmensch' found the article 'The'. Across the 461 hundred-pointers of 2026-07-16 to 2026-09-10, 28 were wrong and now sit in `overrides.json`. Many other matches look wrong and are right - scientific or redirect titles (Pistol shrimp -> Alpheidae), or a parent article (Tatanga -> Super Mario Land) - so review by eye rather than by title similarity. Check a candidate title exists on `api/rest_v1/page/summary` before adding it; a redirect can land somewhere absurd ('Krayon' -> Krita).
 
