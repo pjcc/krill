@@ -1,0 +1,13 @@
+name = "krill-hits"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Served only on its own subdomain of piers.qa, which Cloudflare already holds
+# the DNS for. The main site stays DNS-only and served by GitHub Pages.
+workers_dev = false
+routes = [{ pattern = "krill-hits.piers.qa", custom_domain = true }]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "krill-hits"
+database_id = "00000000-0000-0000-0000-000000000000"

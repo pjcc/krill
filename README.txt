@@ -28,6 +28,7 @@ build.py - renders data.json into index.html; owns all the styling
 _site/ - the generated site: index.html is the latest day, <date>/index.html is each archived day. Self-contained at roughly 441 KB per page (images are inline data URIs)
 data/<date>.json - one enriched capture per day. TRACKED IN GIT, not derived: see below
 cache.json - every HTTP response, keyed by URL, with a last-used timestamp; delete to force a fully fresh pull
+counter/ - the Cloudflare Worker behind the unique-visitors-per-day counter (see VISITOR COUNTER below)
 reference/krillion_answers_2026-09-09.txt - full dump of all 4,772 accepted answers for 9 Sep 2026, grouped by tier
 reference/reveal_2026-09-09.json - the raw /api/reveal response for the same date
 
@@ -61,6 +62,24 @@ python C:\dev\krillion-daily\reenrich.py
 Each page carries a previous / today / next navigation across whatever days have been captured. Because the enriched data is what is kept, rather than the finished HTML, a design change re-renders the entire archive on the next run.
 
 Tiers are krillion 100, deepcut 85, rare 60, schooler 30, plankton 10. Deepcut is the catch-all bulk tier, so almost any non-obvious answer scores 85; the list worth knowing is the handful of plankton answers to avoid.
+
+
+VISITOR COUNTER
+
+Daily unique visitors, counted by IP, at https://krill-hits.piers.qa/stats (JSON, newest day first). GitHub Pages keeps no access logs and piers.qa is DNS-only on Cloudflare, so neither sees the traffic - hence a separate Worker.
+
+Every full page ends with a sendBeacon POST to https://krill-hits.piers.qa/hit. The Worker in counter/ rejects anything whose Origin is not https://piers.qa, hashes date + IP + a secret salt, and inserts it into a D1 table keyed on (day, visitor) with OR IGNORE - so reloads, the root page's stale-day reload, and repeat visits never add a second row. Days are UTC calendar days. Raw IPs are never stored, and the date in the hash means one visitor cannot be tracked across days. The artifact (--fragment) build carries no beacon, since its host blocks it by CSP.
+
+It undercounts visitors whose ad blocker drops the beacon or who have JavaScript off, and counts one household behind a shared IP once. Crawlers that do not run JavaScript never register.
+
+Deploy from counter/ (needs `npx wrangler login` once):
+
+npx wrangler d1 create krill-hits                                  then paste the id into wrangler.toml
+npx wrangler d1 execute krill-hits --remote --file schema.sql
+npx wrangler secret put SALT                                       any long random string; changing it only affects future rows
+npx wrangler deploy
+
+To test locally: put SALT=anything in counter/.dev.vars, run `npx wrangler d1 execute krill-hits --local --file schema.sql`, then `npx wrangler dev --local`.
 
 
 CONSTRAINTS WORTH REMEMBERING

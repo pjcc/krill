@@ -263,6 +263,15 @@ LIVE_SCRIPT = """<script>
 </script>"""
 
 
+# Every full page, dated or root, reports a visit to the counter Worker in
+# counter/, which keeps one row per IP per UTC day. sendBeacon is fire and
+# forget, so it needs no CORS reply and never holds up the page. Not in the
+# fragment build: the artifact host blocks it by CSP.
+HIT_URL = 'https://krill-hits.piers.qa/hit'
+HIT_SCRIPT = ("<script>navigator.sendBeacon && navigator.sendBeacon('"
+              + HIT_URL + "')</script>")
+
+
 def esc(s):
     return html.escape(s or '', quote=True)
 
@@ -378,7 +387,8 @@ def page(d, nav='', archived=False, live=False):
 def wrap_doc(body, fragment=False):
     # Emit pure ASCII: Wikipedia extracts are full of non-breaking spaces and
     # accents, and the page renders in hosts that may not declare a charset.
-    doc = HEAD + body if fragment else DOC_OPEN + HEAD + DOC_MID + body + DOC_CLOSE
+    doc = (HEAD + body if fragment
+           else DOC_OPEN + HEAD + DOC_MID + body + '\n' + HIT_SCRIPT + DOC_CLOSE)
     return doc.encode('ascii', 'xmlcharrefreplace').decode('ascii')
 
 

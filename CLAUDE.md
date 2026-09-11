@@ -13,6 +13,7 @@ Scrapes the daily answer key from the game at https://krillion.io and renders th
 - `reenrich.py` - re-resolves every captured answer listed in `overrides.json`, in place, then rebuilds. Run it after adding an override
 - `cache.json` - every HTTP response keyed by URL; delete to force a fresh pull
 - `reference/` - raw dumps from the day it was built
+- `counter/` - Cloudflare Worker + D1 counting unique visitors per IP per UTC day; see 'Visitor counter' below
 
 Rebuild everything with one command:
 
@@ -101,6 +102,16 @@ There is also an artifact copy at https://claude.ai/code/artifact/d375b6fa-2314-
 Writes are throttled to one every 5 s rather than one per response, with a forced flush before the prune - a 429 backoff is at least 2 s, so a crash mid-run still resumes within a few requests.
 
 `get()` accepts **https only**. Thumbnail URLs come from a remote API response and are inlined into a published page, and `urlopen` otherwise also honours `file:`, `ftp:` and `data:`.
+
+## Visitor counter
+
+Unique visitors per IP per UTC day, read at https://krill-hits.piers.qa/stats. GitHub Pages has no access logs, and `piers.qa` is **DNS-only** on Cloudflare (A records point at GitHub), so Cloudflare's zone analytics never see the traffic either. Proxying the zone to get them would cover all of `piers.qa`, not just `/krill`, so the counter is a separate Worker instead.
+
+- `build.py` appends `HIT_SCRIPT`, a `sendBeacon` POST to `HIT_URL`, to every full page in `wrap_doc`. Not in `--fragment`: the artifact host blocks it by CSP
+- `counter/src/index.js` rejects any `Origin` but `https://piers.qa` (which also drops local `file://` previews), then `INSERT OR IGNORE`s `sha256(day|ip|SALT)` into D1 keyed on `(day, visitor)`. Deduplication is the primary key, so reloads - including `LIVE_SCRIPT`'s - never double count
+- **No raw IPs are stored.** The date is inside the hash so visitors cannot be linked across days, and a missing `SALT` returns 500 rather than hashing unsalted, because an unsalted IPv4 hash is reversible by brute force
+- Served on the custom domain `krill-hits.piers.qa` with `workers_dev = false`, so the beacon URL does not depend on the account's workers.dev subdomain
+- Deploy steps and local testing are in `README.txt` under VISITOR COUNTER. `counter/.dev.vars` holds a local-only SALT and is untracked
 
 ## Known outstanding
 
