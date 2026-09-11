@@ -438,6 +438,17 @@ def short(date):
     return datetime.date.fromisoformat(date).strftime('%d %b').lstrip('0')
 
 
+def prompt_heading(text):
+    """'Name a city with ...' -> 'A city with ...'. Every prompt captured so far
+    opens with 'Name', which repeated seven times a page says nothing. Display
+    only: the data keeps Krillion's wording, which the backfill matches on.
+    Anything that does not open with 'Name ' is shown as written."""
+    if not text.startswith('Name ') or len(text) < 6:
+        return text
+    rest = text[5:]
+    return rest[0].upper() + rest[1:]
+
+
 def page(d, nav='', archived=False, live=False):
     """One day's page. `nav` is empty for the single-file build, which has
     nowhere to navigate to. `live` adds the stale-day check, for the root page
@@ -455,7 +466,7 @@ def page(d, nav='', archived=False, live=False):
         secs.append(
             '<section><div class="phead">'
             + '<span class="pnum">' + '%02d' % i + '</span>'
-            + '<h2>' + esc(p['text']) + '</h2>'
+            + '<h2>' + esc(prompt_heading(p['text'])) + '</h2>'
             + '<span class="pmeta mono">' + format(p.get('total', 0), ',') + ' accepted</span>'
             + '</div>' + entries + '</section>'
         )
