@@ -3,11 +3,12 @@
 // hits. /stats shows unique visitors, total hits and hits per visitor for each
 // day as a table; /stats.json is the same data.
 //
-// Raw IPs are never stored, only a SHA-256 of date + IP + a secret salt. The
-// date in the hash means the same visitor on two days cannot be linked, and the
-// salt stops anyone reversing it by hashing all four billion IPv4 addresses -
-// which is also why a missing salt fails the request rather than hashing
-// without one. So hits per visitor is a list of counts, not of addresses.
+// Raw IPs are never stored, only a SHA-256 of date + visitor key + a secret
+// salt. The date in the hash means the same visitor on two days cannot be
+// linked, and the salt stops anyone reversing it by hashing all four billion
+// IPv4 addresses - which is also why a missing salt fails the request rather
+// than hashing without one. So hits per visitor is a list of counts, not of
+// addresses.
 
 const ORIGIN = 'https://piers.qa';
 // Per-visitor counts listed for a day on /stats before the rest collapse into
@@ -17,6 +18,20 @@ const SHOWN = 20;
 async function sha256(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// IPv4 counts by address, IPv6 by its /64. Windows and phones reach the web
+// from temporary IPv6 addresses that rotate inside the /64 they were given, so
+// counting whole addresses split one PC into several visitors in a day - found
+// when a test from the same machine added a unique instead of bumping its row.
+function visitorKey(ip) {
+  if (ip.includes('.')) return ip.slice(ip.lastIndexOf(':') + 1);   // IPv4, or IPv4-mapped IPv6
+  if (!ip.includes(':')) return ip;
+  const [head, tail] = ip.split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail ? tail.split(':') : [];
+  const groups = tail === undefined ? h : [...h, ...Array(8 - h.length - t.length).fill('0'), ...t];
+  return groups.slice(0, 4).map(g => parseInt(g, 16).toString(16)).join(':') + '::/64';
 }
 
 async function stats(env) {
@@ -67,7 +82,7 @@ td:last-child{white-space:normal;color:#92a6bc}
 <body>
 <main>
 <h1>piers.qa/krill visitors</h1>
-<p>Per UTC day. A visitor is one IP address. Hits are page loads, and hits per visitor lists each visitor's count that day, busiest first. <a href="/stats.json">JSON</a></p>
+<p>Per UTC day. A visitor is one IPv4 address, or one IPv6 /64 block, since devices rotate IPv6 addresses within it. Hits are page loads, and hits per visitor lists each visitor's count that day, busiest first. <a href="/stats.json">JSON</a></p>
 <div class="scroll"><table>
 <thead><tr><th>Day</th><th>Unique</th><th>Hits</th><th>Hits per visitor</th></tr></thead>
 <tbody>${rows}</tbody>
@@ -88,12 +103,12 @@ export default {
       if (req.headers.get('Origin') !== ORIGIN) return new Response(null, { status: 403 });
       if (!env.SALT) return new Response('SALT is not set', { status: 500 });
       const day = new Date().toISOString().slice(0, 10);
-      const ip = req.headers.get('CF-Connecting-IP') || '';
+      const key = visitorKey(req.headers.get('CF-Connecting-IP') || '');
       // The primary key keeps a visitor to one row a day; a repeat bumps hits.
       await env.DB.prepare(
         'INSERT INTO hits (day, visitor) VALUES (?, ?) '
         + 'ON CONFLICT (day, visitor) DO UPDATE SET hits = hits + 1'
-      ).bind(day, await sha256(day + '|' + ip + '|' + env.SALT)).run();
+      ).bind(day, await sha256(day + '|' + key + '|' + env.SALT)).run();
       return new Response(null, { status: 204 });
     }
 
