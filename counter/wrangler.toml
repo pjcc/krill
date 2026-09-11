@@ -1,4 +1,7 @@
 name = "krill-hits"
+# Set explicitly: the wrangler OAuth token comes back without account:read, so
+# it cannot discover the account on its own.
+account_id = "93d9ffaf7fa257370f6bf27aeb89e45c"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 
@@ -10,4 +13,4 @@ routes = [{ pattern = "krill-hits.piers.qa", custom_domain = true }]
 [[d1_databases]]
 binding = "DB"
 database_name = "krill-hits"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "76ca4a8e-7979-48f3-a825-fee5221b45d1"
