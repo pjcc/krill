@@ -17,3 +17,7 @@ __pycache__/
 # Parsed answer keys from backfill.py's mirror pulls, so a rerun after a
 # Wikipedia 429 does not fetch the mirrors again. data/ holds the result.
 .backfill/
+
+# Local-only Worker secrets - counter/ holds a throwaway SALT, trigger/ holds a
+# GitHub token with Actions write access. Never tracked.
+.dev.vars

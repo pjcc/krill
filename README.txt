@@ -29,6 +29,7 @@ _site/ - the generated site: index.html is the latest day, <date>/index.html is 
 data/<date>.json - one enriched capture per day. TRACKED IN GIT, not derived: see below
 cache.json - every HTTP response, keyed by URL, with a last-used timestamp; delete to force a fully fresh pull
 counter/ - the Cloudflare Worker behind the unique-visitors-per-day counter (see VISITOR COUNTER below)
+trigger/ - a second Cloudflare Worker whose only job is firing the deploy workflow on time (see DAILY TRIGGER below)
 reference/krillion_answers_2026-09-09.txt - full dump of all 4,772 accepted answers for 9 Sep 2026, grouped by tier
 reference/reveal_2026-09-09.json - the raw /api/reveal response for the same date
 
@@ -82,6 +83,26 @@ npx wrangler secret put SALT                                       any long rand
 npx wrangler deploy
 
 To test locally: put SALT=anything in counter/.dev.vars, run `npx wrangler d1 execute krill-hits --local --file schema.sql`, then `npx wrangler dev --local`.
+
+
+DAILY TRIGGER
+
+GitHub's cron is best-effort and this repo is throttled hard. deploy.yml asks for 36 scheduled triggers a day - every 15 minutes from 04:07 to 12:52 UTC - and GitHub created one of them on 14 Sep 2026, at 09:46, which is 5h46m after the 04:00 puzzle roll. The site sat a day behind every morning and the lag was growing: +4h36m on the 12th, +5h27m on the 13th, +5h48m on the 14th. Nothing inside the workflow can fix that, because the runs are never created. The trigger has to come from outside GitHub.
+
+trigger/ is a second Cloudflare Worker that does nothing but fire the workflow. It runs at 04:05, 04:20, 05:05 and 05:20 UTC, checks whether data/<date>.json is already on main, and if not POSTs a workflow_dispatch to deploy.yml. Cloudflare cron fires to the minute.
+
+It has no route and no workers.dev subdomain, so nothing can reach it over HTTP - it holds a GitHub token with Actions write access, and that is worth keeping off the network. It is a separate Worker from the counter for the same reason: the counter is publicly reachable and already holds the SALT and the D1 binding, and one compromise should not hand over both.
+
+deploy.yml's own schedule is deliberately left in place as the fallback. If the token expires or the Worker breaks, the site goes back to updating late rather than not at all - and a token expiring is silent, with no error anywhere except a stale page.
+
+Deploy from trigger/:
+
+npx wrangler secret put GH_TOKEN                                   the fine-grained PAT; see below
+npx wrangler deploy
+
+The token is a fine-grained personal access token from https://github.com/settings/personal-access-tokens/new - resource owner pjcc, repository access limited to pjcc/krill, and one permission: Repository permissions -> Actions -> Read and write. Set it to never expire, or the counter to a diary note: an expired token fails with a 401 that only shows up in `npx wrangler tail`.
+
+To test without waiting for 04:05: put GH_TOKEN=<the token> in trigger/.dev.vars, run `npx wrangler dev --test-scheduled`, then hit http://localhost:8787/__scheduled in another shell. `npx wrangler tail` shows the deployed Worker's log lines live.
 
 
 CONSTRAINTS WORTH REMEMBERING
