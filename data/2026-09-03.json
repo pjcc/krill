@@ -150,10 +150,10 @@
     {
      "answer": "Dragon Egg",
      "quip": "One per world, dropped when the Ender Dragon dies.",
-     "title": "Dragon's egg",
-     "description": "Type of firework",
-     "extract": "A dragon's egg is a fireworks pyrotechnic star which first burns for a period for a visual effect and then loudly deflagrates. This effect became controversial because of the toxic compounds once used, particularly lead tetroxide Pb3O4.",
-     "url": "https://en.wikipedia.org/wiki/Dragon's_egg",
+     "title": null,
+     "description": null,
+     "extract": null,
+     "url": null,
      "image": null,
      "approx": false
     }
