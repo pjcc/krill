@@ -79,8 +79,8 @@ Deploy from counter/ (needs `npx wrangler login` once):
 
 npx wrangler d1 create krill-hits                                  then paste the id into wrangler.toml
 npx wrangler d1 execute krill-hits --remote --file schema.sql
+npx wrangler deploy                                                must come first; secret put fails until the Worker exists
 npx wrangler secret put SALT                                       any long random string; changing it only affects future rows
-npx wrangler deploy
 
 To test locally: put SALT=anything in counter/.dev.vars, run `npx wrangler d1 execute krill-hits --local --file schema.sql`, then `npx wrangler dev --local`.
 
@@ -95,10 +95,12 @@ It has no route and no workers.dev subdomain, so nothing can reach it over HTTP 
 
 deploy.yml's own schedule is deliberately left in place as the fallback. If the token expires or the Worker breaks, the site goes back to updating late rather than not at all - and a token expiring is silent, with no error anywhere except a stale page.
 
-Deploy from trigger/:
+Deploy from trigger/, in this order - `secret put` fails with "Worker not found" until the Worker exists:
 
-npx wrangler secret put GH_TOKEN                                   the fine-grained PAT; see below
 npx wrangler deploy
+npx wrangler secret put GH_TOKEN                                   the fine-grained PAT; see below
+
+Between the two, the Worker runs without a token: the scheduled handler logs that GH_TOKEN is not set and returns, rather than throwing. deploy.yml's own schedule still covers the day.
 
 The token is a fine-grained personal access token from https://github.com/settings/personal-access-tokens/new - resource owner pjcc, repository access limited to pjcc/krill, and one permission: Repository permissions -> Actions -> Read and write. Set it to never expire, or the counter to a diary note: an expired token fails with a 401 that only shows up in `npx wrangler tail`.
 
