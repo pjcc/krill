@@ -1,6 +1,17 @@
 """Pull today's Krillion krillion-tier answers, enrich each with a Wikipedia
 summary + image, and write a self-contained page. Run once a day."""
 import json, urllib.parse, urllib.request, urllib.error, base64, time, os, sys
+import re, unicodedata
+
+# A Windows console is cp1252, so one progress line naming an article like
+# 'Kanga pirau' with a macron raises UnicodeEncodeError and takes the whole run
+# with it - after hundreds of throttled requests. Logging must never abort a
+# capture; the data files are written as explicit UTF-8 regardless.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(errors='replace')
+    except Exception:
+        pass
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 UA = {'User-Agent': 'krillion-daily/1.0 (local single-page summary generator)'}
@@ -128,25 +139,57 @@ def search(term, hint):
     d = get(f'https://en.wikipedia.org/w/rest.php/v1/search/title?q={q}&limit=4')
     return [p['key'] for p in (d or {}).get('pages', [])]
 
+def norm(title):
+    """A Wikipedia title or answer flattened for comparison: accents folded,
+    underscores and punctuation dropped, and a trailing qualifier removed - both
+    Wikipedia conventions, '(card game)' and ', California'."""
+    t = unicodedata.normalize('NFKD', (title or '').replace('_', ' ').lower())
+    t = ''.join(c for c in t if not unicodedata.combining(c))
+    t = re.sub(r'[^a-z0-9 (),]', '', t)
+    return re.sub(r'\s*(\(.*\)|,.*)\s*$', '', t).replace(',', '').strip()
+
+def names(answer, title):
+    """Does this title name the answer itself, rather than merely resemble it?
+
+    rest.php/v1/search/title is a fuzzy completion, not a lookup: 'Set' offers
+    Seth MacFarlane and Set theory, 'Oca' offers Alexandria Ocasio-Cortez. Taking
+    its first hit that happens to have an article silently mislabels the answer,
+    so a hit counts only when its title *is* the answer - give or take case,
+    accents, punctuation, word spacing and a trailing disambiguator. A title that
+    merely starts with the answer, or extends it by a word, is not the answer.
+
+    Compared against the requested title, not the article the summary redirects
+    to, so genuine redirects still resolve - 'Pistol shrimp' -> Alpheidae."""
+    a, t = norm(answer), norm(title)
+    return bool(a) and (a == t or a.replace(' ', '') == t.replace(' ', ''))
+
+# A stem of nothing but articles and prepositions is no one's closest article:
+# 'The Maschinenmensch' fell back to the article 'The'.
+STOPWORDS = {'the', 'a', 'an', 'of', 'and', 'or', 'in', 'on', 'at', 'to', 'for',
+             'de', 'del', 'la', 'le', 'les', 'el', 'il', 'los', 'las', 'von'}
+
 def summary(title):
     time.sleep(THROTTLE)
     return get(f'https://en.wikipedia.org/api/rest_v1/page/summary/{enc(title)}')
 
 def resolve(answer, hint):
-    """Try the literal title, then search hits, then shorter prefixes of the
-    answer. Returns (summary, approx) - approx flags a prefix fallback, which is
-    a related article rather than the answer itself."""
+    """Try the literal title, then search hits that names() agrees actually name
+    the answer, then shorter prefixes of the answer. Returns (summary, approx) -
+    approx flags a prefix fallback, which is a related article rather than the
+    answer itself. Nothing plausible means no article rather than a wrong one."""
     if answer in OVERRIDES:
         s = summary(OVERRIDES[answer]) if OVERRIDES[answer] else None
         return (s if s and s.get('extract') else None), False
-    for title in [answer] + search(answer, hint):
+    for title in [answer] + [t for t in search(answer, hint) if names(answer, t)]:
         s = summary(title)
         if s and s.get('extract') and s.get('type') != 'disambiguation':
             return s, False
     words = answer.split()
     for n in range(len(words) - 1, 0, -1):
         stem = ' '.join(words[:n])
-        for title in [stem] + search(stem, hint):
+        if all(w.strip('.,') in STOPWORDS for w in stem.lower().split()):
+            continue
+        for title in [stem] + [t for t in search(stem, hint) if names(stem, t)]:
             s = summary(title)
             if s and s.get('extract') and s.get('type') != 'disambiguation':
                 return s, True
