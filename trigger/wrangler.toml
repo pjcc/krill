@@ -1,0 +1,19 @@
+name = "krill-trigger"
+# Set explicitly: the wrangler OAuth token comes back without account:read, so
+# it cannot discover the account on its own. Not a secret - it is the 32-hex
+# segment of any dash.cloudflare.com/<id>/... URL.
+account_id = "93d9ffaf7fa257370f6bf27aeb89e45c"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Nothing calls this Worker - it only runs on its schedule. No custom domain and
+# no workers.dev subdomain means no public surface for a Worker that holds a
+# token with Actions write access.
+workers_dev = false
+
+# 04:05, 04:20, 05:05 and 05:20 UTC. The puzzle rolls at 04:00, so the first
+# attempt leaves Krillion five minutes to start serving the new reveal; the rest
+# are backstops and no-op once the day is captured. One expression rather than
+# four entries.
+[triggers]
+crons = ["5,20 4-5 * * *"]

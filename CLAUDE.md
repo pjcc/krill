@@ -96,6 +96,10 @@ The site is public at **https://piers.qa/krill/**, from the `pjcc/krill` repo, d
 
 The workflow holds `contents: write` in order to commit each day's capture back to `data/`.
 
+**GitHub never creates most of those scheduled runs.** The cron asks for 36 a day; GitHub fired 1 on 2026-09-14, 2-3 on the days either side, and the first one of the day landed +4h36m to +5h48m after the roll - a lag that was growing, not shrinking. Do not respond by making the cron denser: it is already every 15 minutes off the top of the hour, and density is not the lever when 35 of 36 triggers are never created. The trigger has to come from outside GitHub.
+
+`trigger/` is a second Cloudflare Worker that exists only to fire `workflow_dispatch` on `deploy.yml`, at 04:05/04:20/05:05/05:20 UTC, skipping a dispatch once `data/<date>.json` is on `main`. It has no route and no workers.dev subdomain - it holds a fine-grained PAT with Actions write on `pjcc/krill` and should not be reachable. It is separate from the counter Worker on purpose: that one is public and already holds the `SALT` and the D1 binding. `deploy.yml`'s own schedule stays as the fallback, so a dead token degrades to today's behaviour rather than to nothing. **An expired token is silent** - the only symptom is a stale site, and the 401 appears solely in `npx wrangler tail`.
+
 An artifact copy at https://claude.ai/code/artifact/d375b6fa-2314-42bf-b7d9-0ae3c0aa653c was **retired on 2026-09-11** by the user's choice: nothing refreshed it, so it had drifted days behind the live site. It still shows 9 Sep until deleted from https://claude.ai/code/artifacts. Do not republish it; `--fragment` stays for a single-file build.
 
 ## Cache
