@@ -15,12 +15,12 @@
     {
      "answer": "Jib door",
      "quip": "Built flush and papered over so the wall looks unbroken.",
-     "title": "Jib",
-     "description": "Triangular sail that sets ahead of the foremast",
-     "extract": "A jib is a triangular sail that sets ahead of the foremast of a sailing vessel. Its forward corner (tack) is fixed to the bowsprit, to the bows, or to the deck between the bowsprit and the foremost mast. Jibs and spinnakers are the two main types of headsails on a modern boat.",
-     "url": "https://en.wikipedia.org/wiki/Jib",
+     "title": null,
+     "description": null,
+     "extract": null,
+     "url": null,
      "image": null,
-     "approx": true
+     "approx": false
     }
    ]
   },

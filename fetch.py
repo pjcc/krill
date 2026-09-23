@@ -172,11 +172,28 @@ def summary(title):
     time.sleep(THROTTLE)
     return get(f'https://en.wikipedia.org/api/rest_v1/page/summary/{enc(title)}')
 
+def fold(text):
+    t = unicodedata.normalize('NFKD', (text or '').lower())
+    return ''.join(c for c in t if not unicodedata.combining(c))
+
+def explains(s, rest):
+    """Does this article mention every word the prefix fallback cut off?
+
+    A stem names only part of the answer, so on its own it proves nothing:
+    'Khai luk khoei' fell back to Khai, a village in Punjab, and 'Jib door' to
+    the sail. A genus or species article names the category the answer adds -
+    Latia's summary says limpet, Cochineal's says insect - so the dropped words
+    must appear in its description or extract, allowing a plural."""
+    text = fold((s.get('description') or '') + ' ' + (s.get('extract') or ''))
+    words = [w for w in re.findall(r'[a-z0-9]+', fold(' '.join(rest))) if w not in STOPWORDS]
+    return all(re.search(r'\b' + re.escape(w.rstrip('s')) + r'(s|es)?\b', text) for w in words)
+
 def resolve(answer, hint):
     """Try the literal title, then search hits that names() agrees actually name
     the answer, then shorter prefixes of the answer. Returns (summary, approx) -
     approx flags a prefix fallback, which is a related article rather than the
-    answer itself. Nothing plausible means no article rather than a wrong one."""
+    answer itself, kept only when explains() finds the dropped words in it.
+    Nothing plausible means no article rather than a wrong one."""
     if answer in OVERRIDES:
         s = summary(OVERRIDES[answer]) if OVERRIDES[answer] else None
         return (s if s and s.get('extract') else None), False
@@ -191,7 +208,8 @@ def resolve(answer, hint):
             continue
         for title in [stem] + [t for t in search(stem, hint) if names(stem, t)]:
             s = summary(title)
-            if s and s.get('extract') and s.get('type') != 'disambiguation':
+            if (s and s.get('extract') and s.get('type') != 'disambiguation'
+                    and explains(s, words[n:])):
                 return s, True
     return None, False
 

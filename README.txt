@@ -115,6 +115,6 @@ Wikipedia's action=query search API returns 429 unconditionally from this networ
 
 The cache would otherwise grow forever - about 750 KB a day, nearly all of it base64 thumbnails that are never reused once the puzzle rolls. Each run now prunes it: entries untouched for KRILLION_CACHE_DAYS (default 7) are dropped, then the least recently used are evicted until the file fits KRILLION_CACHE_MB (default 20). Cache hits refresh the timestamp, so anything still in use survives. The file format carries a version - an old flat cache is migrated automatically on first load.
 
-Two matches are imperfect and the page labels them as such: "Cozido das Furnas" has no article and falls back to "Cocido" with a "closest article" tag, and "Immersive sim" has an article but no image, so it renders a blank plate.
+Two matches are imperfect and the page labels them as such: "Cozido das Furnas" has no article and falls back to "Cocido" with a "closest article" tag (now "partial match: <title>", and kept only when the article mentions the dropped words - see fetch.explains()), and "Immersive sim" has an article but no image, so it renders a blank plate.
 
 The page is deliberately dark-only and paints its own background rather than inheriting the host's theme.
