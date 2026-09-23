@@ -1,5 +1,6 @@
 """Re-resolve every captured hundred-pointer, and every linked best answer on a
-prompt with no hundred-pointer, that has an entry in overrides.json, in place,
+prompt with no hundred-pointer, that has an entry in overrides.json or was a
+partial match (so the explains() gate applies to it), in place,
 then rebuild. Only those items change - answers, quips, totals and tiers are
 untouched - so it is safe on days the free endpoint no longer serves.
 
@@ -19,7 +20,7 @@ def main():
         touched = False
         for p in day['prompts']:
             for n, it in enumerate(p['items']):
-                if it['answer'] not in fetch.OVERRIDES:
+                if it['answer'] not in fetch.OVERRIDES and not it.get('approx'):
                     continue
                 new = fetch.enrich_item(it['answer'], it.get('quip', ''), fetch.hint_for(p['text']))
                 if new != it:

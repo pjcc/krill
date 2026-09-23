@@ -384,7 +384,7 @@ def entry_html(it):
     if it.get('url'):
         name = ('<a href="' + esc(it['url']) + '" target="_blank" rel="noopener">'
                 + name + '</a>')
-        tag = ('<span class="approx">' + esc(it['title']) + '</span>') if it.get('approx') else ''
+        tag = ('<span class="approx">partial match: ' + esc(it['title']) + '</span>') if it.get('approx') else ''
     else:
         tag = '<span class="approx">no article</span>'
 
