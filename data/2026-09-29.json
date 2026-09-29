@@ -1,0 +1,54 @@
+{
+ "date": "2026-09-29",
+ "prompts": [
+  {
+   "text": "Name something sold in a tube",
+   "total": 0,
+   "tiers": {},
+   "items": [],
+   "best": null
+  },
+  {
+   "text": "Name a symbol or shape that appears on a national flag (like a star)",
+   "total": 0,
+   "tiers": {},
+   "items": [],
+   "best": null
+  },
+  {
+   "text": "Name a type of chair",
+   "total": 0,
+   "tiers": {},
+   "items": [],
+   "best": null
+  },
+  {
+   "text": "Name a standard type of insurance policy (not a one-off custom policy)",
+   "total": 0,
+   "tiers": {},
+   "items": [],
+   "best": null
+  },
+  {
+   "text": "Name a song with over a billion streams on Spotify",
+   "total": 0,
+   "tiers": {},
+   "items": [],
+   "best": null
+  },
+  {
+   "text": "Name an animal that can grow longer than 10 feet (3 m), including the tail",
+   "total": 0,
+   "tiers": {},
+   "items": [],
+   "best": null
+  },
+  {
+   "text": "Name a product used to wash or style hair (product types, not brands)",
+   "total": 0,
+   "tiers": {},
+   "items": [],
+   "best": null
+  }
+ ]
+}
